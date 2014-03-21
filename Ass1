@@ -28,7 +28,7 @@ Main_loop:
 		..
 		..
 		mov A, State		; Shift current state into accumulator
-		XXXXX				; Mystery instruction: Hint: ajmp is 2 bytes long in code memory
+		rl A				; Mystery instruction: Hint: ajmp is 2 bytes long in code memory
 		mov	 DPTR, #State_table
 		jmp @A+DPTR
 State_table:
