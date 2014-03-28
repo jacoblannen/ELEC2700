@@ -32,35 +32,122 @@ Main_loop:
 		mov	 DPTR, #State_table
 		jmp @A+DPTR
 State_table:
-		ajmp State_1
-		ajmp State_2
-		ajmp State_3
-		..
-		..
-		..
-		ajmp State_N			
-		..
-		..				
+		ajmp State_1			;Stop state
+		ajmp State_2			;Ball initialised to LD1
+		ajmp State_3			;Ball move right to LD2
+		ajmp State_4			;Ball move right to LD3
+		ajmp State_5			;Ball move right to LD4
+		ajmp State_6			;Ball move right to LD5
+		ajmp State_7			;Ball move right to LD6
+		ajmp State_8			;Ball move right to LD7
+		ajmp State_9			;Ball move right to LD8
+		ajmp State_10			;Ball move left to LD7
+		ajmp State_11			;Ball move left to LD6
+		ajmp State_12			;Ball move left to LD5
+		ajmp State_13			;Ball move left to LD4
+		ajmp State_14			;Ball move left to LD3
+		ajmp State_15			;Ball move left to LD2
+		ajmp State_16			;Ball move left to LD1
+		ajmp State_17			;P1 Scores
+		ajmp State_18			;P2 Scores
+		ajmp State_19			;Pause state
+		ajmp State_20			;Lose state
 State_1:	
 		..
 		..
 		inc State
 		ajmp Main_loop							
 
-State_2:
-		..
-		..
-		..
-		ajmp Main_loop	
-		..
-		..
-		..		
-State_N:
-		..
-		..
-		..
-		ajmp Main_loop
+State_2:			;Ball initialised to LD1
+	mov A, #00000001
+	mov P2, A			
+	lcall Delay
+	ajmp Main_Loop
+	
+State_3:			;Ball move right to LD2
+	rl A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
+	
+State_4:			;Ball move right to LD3
+	rl A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
 
+State_5:			;Ball move right to LD4
+	rl A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop			
+
+State_6:			;Ball move right to LD5
+	rl A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop			
+
+State_7:			;Ball move right to LD6
+	rl A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
+
+State_8:			;Ball move right to LD7
+	rl A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
+
+State_9:			;Ball move right to LD8
+	rl A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
+
+
+State_10:			;Ball moving left to LD7
+	rr A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
+
+State_11:			;Ball moving left to LD6
+	rr A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
+	
+State_12:			;Ball moving left to LD5
+	rr A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
+	
+State_13:			;Ball moving left to LD4
+	rr A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
+
+State_14:			;Ball moving left to LD3
+	rr A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
+
+State_15:			;Ball moving left to LD2
+	rr A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
+
+State_16:			;Ball moving left to LD1
+	rr A
+	mov P2, A
+	lcall Delay
+	ajmp Main_Loop
 
 ;--------------------------------- Functions---------------------------------------
 	       ;Add your assembly code functions for various tasks in this section 
