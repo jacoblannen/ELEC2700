@@ -4,6 +4,8 @@ $include (c8051f120.inc)               	; Includes register definition file
 ;-----------------------------------------------------------------------------
 State			equ		R4
 Delay			equ		R3
+P1_score		equ		R1
+P2_score		equ		R2
 
 	org   0000H
 		ljmp  Start              		; Locate a jump to the start of code at 
