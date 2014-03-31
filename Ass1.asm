@@ -3,7 +3,7 @@ $include (c8051f120.inc)               	; Includes register definition file
 ; EQUATES
 ;-----------------------------------------------------------------------------
 State			equ		R4
-
+Delay			equ		R3
 
 	org   0000H
 		ljmp  Start              		; Locate a jump to the start of code at 
@@ -62,48 +62,56 @@ State_2:			;Ball initialised to LD1
 	mov A, #00000001
 	mov P2, A			
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 	
 State_3:			;Ball move right to LD2
 	rl A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 	
 State_4:			;Ball move right to LD3
 	rl A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 
 State_5:			;Ball move right to LD4
 	rl A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop			
 
 State_6:			;Ball move right to LD5
 	rl A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop			
 
 State_7:			;Ball move right to LD6
 	rl A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 
 State_8:			;Ball move right to LD7
 	rl A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 
 State_9:			;Ball move right to LD8
 	rl A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 
 
@@ -111,42 +119,49 @@ State_10:			;Ball moving left to LD7
 	rr A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 
 State_11:			;Ball moving left to LD6
 	rr A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 	
 State_12:			;Ball moving left to LD5
 	rr A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 	
 State_13:			;Ball moving left to LD4
 	rr A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 
 State_14:			;Ball moving left to LD3
 	rr A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 
 State_15:			;Ball moving left to LD2
 	rr A
 	mov P2, A
 	lcall Delay
+	inc State
 	ajmp Main_Loop
 
 State_16:			;Ball moving left to LD1
 	rr A
 	mov P2, A
 	lcall Delay
+	sub State, #14
 	ajmp Main_Loop
 
 ;--------------------------------- Functions---------------------------------------
@@ -154,7 +169,7 @@ State_16:			;Ball moving left to LD1
 
 
 Delay: ;this is how to generate time delay; modify it to generate X msec delay
-Loop2:	mov   R7, #03h			
+Loop2:	mov   R7, Delay			
 Loop1:  mov   R6, #00h
 Loop0:  mov   R5, #00h
         djnz  R5, $
