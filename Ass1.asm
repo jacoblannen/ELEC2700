@@ -2,8 +2,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 ;-----------------------------------------------------------------------------
 ; EQUATES
 ;-----------------------------------------------------------------------------
-	P1_score		equ				R1
-	P2_score		equ				R2
+	Score				equ				R1
 	Time				equ				R3
 	State				equ				R4
 
@@ -27,8 +26,8 @@ $INClude (c8051f120.INC) ; Includes register definition file
 ;--------------------------------- Main Loop-------------------------------------------
 ;Add your assembly code in this section to implement the State Machine
 	mov State, #0
-	mov P1_score, #0111b
-	mov P2_score, #0100b
+	mov Score, #0
+	mov SP, #01FH
 
 	Main_loop:
 							;..
@@ -101,46 +100,39 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					mov P2, A	
 					lcall Delay
 					jnb P1.4, S3_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
-	S3_paus:push 4
+	S3_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_4:	;Ball move right to LD2
-					mov A, P2
-					rl A
-					mov P2, A
+					lcall Ball_Right
 					lcall Delay
 					jnb P1.4, S4_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
-	S4_paus:push 4
+	S4_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_5:	;Ball move right to LD3
-					mov A, P2
-					rl A
-					mov P2, A
+					lcall Ball_Right
 					lcall Delay
 					jnb P1.4, S5_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
-	S5_paus:push 4
+	S5_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_6:	;Ball move right to LD4
-					mov A, P2
-					rl A
-					mov P2, A
+					lcall Ball_Right
 					lcall Delay
 					jnb P1.4, S6_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop	
 	S6_paus:push 4
@@ -148,64 +140,53 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					ajmp Main_Loop
 
 	State_7:	;Ball move right to LD5
-					mov A, P2
-					rl A
-					mov P2, A
+					lcall Ball_Right
 					lcall Delay
 					jnb P1.4, S7_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop	
-	S7_paus:push 4
+	S7_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_8:	;Ball move right to LD6
-					mov A, P2
-					rl A
-					mov P2, A
+					lcall Ball_Right
 					lcall Delay
 					jnb P1.4, S8_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
-	S8_paus:push 4
+	S8_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_9:	;Ball move right to LD7
-					mov A, P2
-					rl A
-					mov P2, A
+					lcall Ball_Right
 					lcall Delay
 					jnb P1.4, S9_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
-	S9_paus:push 4
+	S9_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_10:	;Ball move right to LD8
-					mov A, P2
-					rl A
-					mov P2, A
+					lcall Ball_Right
 					lcall Delay
 					jnb P1.4, S10_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
-	S10_paus:push 4
+	S10_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_11:	;Ball moving left to LD7
-					mov A, P2
-					rr A
-					mov P2, A
+					lcall Ball_Left
 					lcall Delay
 					jnb P1.4, S11_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
 	S11_paus:push 4
@@ -213,12 +194,9 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					ajmp Main_Loop
 
 	State_12:	;Ball moving left to LD6
-					mov A, P2
-					rr A
-					mov P2, A
+					lcall Ball_Left
 					lcall Delay
 					jnb P1.4, S12_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
 	S12_paus:push 4
@@ -226,81 +204,71 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					ajmp Main_Loop
 
 	State_13:	;Ball moving left to LD5
-					mov A, P2
-					rr A
-					mov P2, A
+					lcall Ball_Left
 					lcall Delay
 					jnb P1.4, S13_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
-	S13_paus:push 4
+	S13_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_14:	;Ball moving left to LD4
-					mov A, P2
-					rr A
-					mov P2, A
-					lcall Delay
-					jnb P1.4, S14_paus
-					lcall Debounce
-					INC State
-					ajmp Main_Loop
-	S14_paus:push 4
-					mov State, #19
-					ajmp Main_Loop
+							lcall Ball_Left
+							lcall Delay
+							jnb P1.4, S14_paus
+							INC State
+							ajmp Main_Loop
+		S14_paus:	lcall Debounce
+							push 4
+							mov State, #19
+							ajmp Main_Loop
 
 	State_15:	;Ball moving left to LD3
-					mov A, P2
-					rr A
-					mov P2, A
+					lcall Ball_Left
 					lcall Delay
 					jnb P1.4, S15_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
-	S15_paus:push 4
+	S15_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_16:	;Ball moving left to LD2
-					mov A, P2
-					rr A
-					mov P2, A
+					lcall Ball_Left
 					lcall Delay
 					jnb P1.4, S16_paus
-					lcall Debounce
 					INC State
 					ajmp Main_Loop
-	S16_paus:push 4
+	S16_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_17:	;Ball moving left to LD1
-					mov A, P2
-					rr A
-					mov P2, A
+					lcall Ball_Left
 					lcall Delay
 					jnb P1.4, S17_paus
-					lcall Debounce
 					mov State, #3
 					ajmp Main_Loop
-	S17_paus:push 4
+	S17_paus:lcall Debounce
+					push 4
 					mov State, #19
 					ajmp Main_Loop
 
 	State_18:	;P1 Scores
 					;..
-					;..
-					mov 0, P1_score
-					mov A, 0
+					mov A, Score
+					add A, #00010000b
+					mov Score, A
 	Flash1:	mov P2, #00000001b
 					lcall Flash_Delay
 					mov P2, #0
-					djnz 0, Flash1
-					subb A, #15
-					jz Lose1
+					subb A, #00010000b
+					jz Flash1
+					jb 0D7H, Lose1
 					mov State, #2				;Return state to "pre-game" state
 					ajmp Main_Loop
 		Lose1:mov State, #21
@@ -308,10 +276,15 @@ $INClude (c8051f120.INC) ; Includes register definition file
 
 	State_19:	;P2 Scores
 					;..
-					;..
-					mov A, P2_score
-					subb A, #15
-					jz Lose2
+					mov A, Score
+					add A, #00000001b
+					mov Score, A
+	Flash2:	mov P2, #10000000b
+					lcall Flash_Delay
+					mov P2, #0
+					subb A, #00000001b
+					jz Flash2
+					jb 0D6H, Lose2
 					mov State, #2				;Return state to "pre-game" state
 					ajmp Main_Loop
 		Lose2:mov State, #21
@@ -319,32 +292,11 @@ $INClude (c8051f120.INC) ; Includes register definition file
 
 	State_20:	;Pause State
 					lcall Debounce
-					;push 4
-					mov 0, P2
-					mov A, P1_score
-					swap A
-					add A, P2_score
-					rlc A
-					mov 00H, C
-					rlc A
-					mov 01H, C
-					rlc A
-					mov 02H, C
-					rlc A
-					mov 03H, C
-					rlc A
-					mov 04H, C
-					rlc A
-					mov 05H, C
-					rlc A
-					mov 06H, C
-					rlc A
-					mov 07H, C
-					mov P2, 20H
-					;lcall Debounce
+					push P2
+					lcall Display_Score
 					jb P1.4, $
 					lcall Debounce
-					mov	P2, 0					;Return state to state that was last used before pause
+					pop P2
 					pop 4
 					ajmp Main_Loop
 
@@ -362,8 +314,42 @@ $INClude (c8051f120.INC) ; Includes register definition file
 	;			mov State, #20
 	;	ret
 
+	Ball_Right:				;Routine to move the light one position to the right
+				mov A, P2
+				rl A
+				mov P2, A
+			ret
+
+	Ball_Left:
+				mov A, P2
+				rr A
+				mov P2, A
+			ret
+
+	Display_Score:
+				mov A, Score
+				rlc A
+				mov 00H, C
+				rlc A
+				mov 01H, C
+				rlc A
+				mov 02H, C
+				rlc A
+				mov 03H, C
+				rlc A
+				mov 04H, C
+				rlc A
+				mov 05H, C
+				rlc A
+				mov 06H, C
+				rlc A
+				mov 07H, C
+				clr C
+				mov P2, 20H
+			ret				
+
 	Debounce:
-				DBLoop2:	mov R7, #03h	
+				DBLoop2:	mov R7, #02h	
 				DBLoop1: 	mov R6, #00h
 				DBLoop0: 	mov R5, #00h
         				djnz R5, $
@@ -372,12 +358,15 @@ $INClude (c8051f120.INC) ; Includes register definition file
 		ret
 
 	Delay: ;this is how to generate time delay; modify it to generate X msec delay
-				Loop2:	mov R7, #03h	
+				Loop2:	mov R7, #05h	
 				Loop1: 	mov R6, #00h
 				Loop0: 	mov R5, #00h
-        				djnz R5, $
+        				lcall Button_Status
+								cjne R2, #0FFH, Escape
+								djnz R5, $
         				djnz R6, Loop0
         				djnz R7, Loop1
+				Escape:
 		ret
 
 	Flash_Delay:
@@ -388,6 +377,12 @@ $INClude (c8051f120.INC) ; Includes register definition file
         					djnz R6, FLoop0
         					djnz R7, FLoop1
 		ret
+	
+	Button_Status:
+				mov R2, P1
+			ret
+
+											
 
 ;--------------------------------Lookup Table--------------------------------------
 ; To use this table, in main code use "mov dptr,#Some_Value"
