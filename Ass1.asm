@@ -178,6 +178,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 	Pause17:ajmp Main_Loop
 
 	State_18:	;P1 Scores
+					clr C
 					mov A, Score
 					add A, #00010000b
 					mov Score, A
@@ -199,16 +200,16 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					ajmp Main_Loop
 
 	State_19:	;P2 Scores
+					clr C
 					mov A, Score
 					add A, #00000001b
 					mov Score, A
-					dec A		
 		Flash2:	mov P2, #10000000b
 						lcall Flash_Delay
 						mov P2, #0
 						lcall Flash_Delay
 						subb A, #00000001b
-						jnb PSW.7, Flash2
+						jnb PSW.7, Flash2															;FIX ME
 						clr PSW.7
 					mov A, Score
 					subb A, #0FH
