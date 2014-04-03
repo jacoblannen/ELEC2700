@@ -182,14 +182,13 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					mov A, Score
 					add A, #00010000b
 					mov Score, A
-					subb A, #00010000b
+					anl A, #11110000b
 		Flash1:	mov P2, #00000001b
 						lcall Flash_Delay
 						mov P2, #0
 						lcall Flash_Delay
 						subb A, #00010000b
-						jnb PSW.7, Flash1
-						clr PSW.7
+						jnz Flash1
 					mov A, Score
 					add A, #00010000b
 					jb PSW.7, Lose1
@@ -204,13 +203,13 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					mov A, Score
 					add A, #00000001b
 					mov Score, A
+					anl A, #1111b
 		Flash2:	mov P2, #10000000b
 						lcall Flash_Delay
 						mov P2, #0
 						lcall Flash_Delay
 						subb A, #00000001b
-						jnb PSW.7, Flash2															;FIX ME
-						clr PSW.7
+						jnz Flash2
 					mov A, Score
 					subb A, #0FH
 					jz Lose2
