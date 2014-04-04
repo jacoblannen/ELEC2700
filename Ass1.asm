@@ -11,13 +11,16 @@ $INClude (c8051f120.INC) ; Includes register definition file
 ;-----------------------------------------------------------------------------
 ; Initialisation for Peripheral Board
 ;-----------------------------------------------------------------------------
-	Start: 	mov WDTCN, #0DEh
-        	mov WDTCN, #0ADh
-        	mov SFRPAGE, #CONFIG_PAGE 		; Use SFRs on the Configuration Page
-        	mov P0MDOUT, #00000000b 			; Inputs
-        	mov P1MDOUT, #00000000b 			; Inputs
-        	mov P2MDOUT, #11111111b 			; Outputs
-        	mov XBR2, #40h								; Enable the Port I/O Crossbar
+	Start: 	mov WDTCN, 		#0DEh
+        	mov WDTCN, 		#0ADh
+        	mov SFRPAGE, 	#CONFIG_PAGE 		; Use SFRs on the Configuration Page
+        	mov P0MDOUT, 	#00000000b 			; Inputs
+        	mov P1MDOUT, 	#00000000b 			; Inputs
+        	mov P2MDOUT, 	#11111111b 			; Outputs
+					mov P3MDOUT,	#11111111b			;	Set LCD as output
+        	mov XBR2, 		#40h						; Enable the Port I/O Crossbar
+					lcall Init_Devices					
+
 ;--------------------------------- Initialisation---------------------------------------
 ;Add your assembly code in this section to:
 ;Initialise internal variables eg State
@@ -66,17 +69,20 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					mov Score, #0
 					lcall Button_Check
 					lcall Action
+					lcall Feedback_Delay
 					ajmp 	Main_loop
 	
 	State_2:	;Ball initialised to LD1, waiting for player to serve
 					mov P2, #00000001b
 					lcall Button_Check
 					lcall Action
+					lcall Feedback_Delay
 					ajmp Main_Loop
 
 	State_3:	;Ball initialised to LD1
 					lcall Button_Check
 					lcall Action
+					lcall Feedback_Delay
 					ajmp Main_Loop
 	
 	State_4:	;Ball move right to LD2
@@ -182,13 +188,14 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					mov A, Score
 					add A, #00010000b
 					mov Score, A
-					anl A, #11110000b
+					subb A, #00010000b
 		Flash1:	mov P2, #00000001b
 						lcall Flash_Delay
 						mov P2, #0
 						lcall Flash_Delay
 						subb A, #00010000b
-						jnz Flash1
+						jnb PSW.7, Flash1
+						clr PSW.7
 					mov A, Score
 					add A, #00010000b
 					jb PSW.7, Lose1
@@ -203,12 +210,12 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					mov A, Score
 					add A, #00000001b
 					mov Score, A
-					anl A, #1111b
 		Flash2:	mov P2, #10000000b
 						lcall Flash_Delay
 						mov P2, #0
 						lcall Flash_Delay
-						subb A, #00000001b
+						anl A, #1111b
+						dec A														;FIX ME
 						jnz Flash2
 					mov A, Score
 					subb A, #0FH
@@ -225,6 +232,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					lcall Display_Score
 					lcall Button_Check
 					lcall Action
+					lcall Feedback_Delay
 					cjne R4, #19, Resume
 					sjmp Pause_Loop
 	Resume:	
@@ -234,6 +242,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					lcall Display_Score
 					lcall Button_Check
 					lcall Action
+					lcall Feedback_Delay
 					cjne R4, #0, State_21
 					mov P2, 021H
 					ajmp Main_Loop
@@ -242,13 +251,66 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					mov P2, #10000000b
 					lcall Button_Check
 					lcall Action
-					lcall Main_Loop
+					lcall Feedback_Delay
+					cjne R4, #21, Esc
+					sjmp State_22
+		Esc:	lcall Main_Loop							;WHY???
 
 ;--------------------------------- Functions---------------------------------------
 ;Add your assembly code functions for various tasks in this section
 
+	Init_Devices:
+    lcall DAC_Init
+    lcall Voltage_Reference_Init
+    ret
+	
+	DAC_Init:
+    mov  SFRPAGE,   #DAC0_PAGE
+    mov  DAC0CN,    #084h
+    ret
 
-	Ball_Right:				;Routine to move the light one position to the right
+	Voltage_Reference_Init:
+    mov  SFRPAGE,   #ADC0_PAGE
+    mov  REF0CN,    #003h
+    ret
+
+	P1_Sound:
+					mov R3, #060H
+	Sound1:	mov DAC0H, #060H
+					lcall P1_Freq
+					mov DAC0H, #0
+					lcall P1_Freq
+					djnz R3, Sound1
+					ret
+	
+	P2_Sound:
+					mov R3, #060H
+	Sound2:	mov DAC0H, #060H
+					lcall P2_Freq
+					mov DAC0H, #0
+					lcall P2_Freq
+					djnz R3, Sound2
+					ret
+
+	P1_Freq:		;Delay to decrease risk of "double tap"
+				F1Loop2:	mov R7, #01h	
+				F1Loop1: 	mov R6, #04h
+				F1Loop0: 	mov R5, #00h
+        					djnz R5, $
+        					djnz R6, F1Loop0
+        					djnz R7, F1Loop1
+		ret
+
+	P2_Freq:		;Delay to decrease risk of "double tap"
+				F2Loop2:	mov R7, #01h	
+				F2Loop1: 	mov R6, #05h
+				F2Loop0: 	mov R5, #00h
+        					djnz R5, $
+        					djnz R6, F2Loop0
+        					djnz R7, F2Loop1
+		ret
+
+Ball_Right:				;Routine to move the light one position to the right
 				mov A, P2
 				rl A
 				mov P2, A
@@ -283,13 +345,15 @@ $INClude (c8051f120.INC) ; Includes register definition file
 			ret				
 
 	Button_Check:								;Standard debouncing button check loop. Used in states with non-variable delays (ie pause, stop, serve)
-			BLoop2:		mov R7, #09H	
+			BLoop2:		mov R7, #0AH	
 			BLoop1: 	mov R6, #00h
 			BLoop0: 	mov R5, #00h
       					lcall Button_Status
+								cjne R0, #0FFH, Check_Esc
 								djnz R5, $
        					djnz R6, BLoop0
         				djnz R7, BLoop1
+			Check_Esc:
 			ret
 
 	Delay: 											;Variable Delay using subroutine "Get_Delay_Value" to set the correct delay for the selected speed setting
@@ -343,11 +407,19 @@ $INClude (c8051f120.INC) ; Includes register definition file
         					djnz R7, FLoop1
 		ret
 	
+	Feedback_Delay:		;Delay to decrease risk of "double tap"
+				FBLoop2:	mov R7, #04h	
+				FBLoop1: 	mov R6, #00h
+				FBLoop0: 	mov R5, #00h
+        					djnz R5, $
+        					djnz R6, FBLoop0
+        					djnz R7, FBLoop1
+		ret
 	Button_Status:	;Subroutine to take any input from the push buttons and save it into bit-addressable memory for reference (byte 20H)
 								mov R0, P1
 								cjne R0, #0FFH, Input		;If button status is not FF (ie, if a button is being pressed) jump to input line, else return
 								ret
-				Input: 	mov 20H, R0							;Send button status to byte 21H in bit-addressable memory IF any button is pressed
+				Input: 	mov 20H, R0							;Send button status to byte 20H in bit-addressable memory IF any button is pressed
 								ret
 
 	
@@ -442,6 +514,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 								jnb 08H, Serve_1			;If bit 08H is clear then this is the serve (ie, no input required to send ball to other end)
 								jb 00H, P1_Miss				;If no input from button 1, jump to Player 1 Miss routine
 			Serve_1:	setb 08H							;Reset the serve indicator so that the next time this state is reached the player must use PB1 to return "ball"
+								lcall P1_Sound
 								INC State
 								ljmp Reset_Button_Status
 								S4_Pause:	mov 2, State
@@ -504,6 +577,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 		S11_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S11_Pause
 								jb 0FH, Player_2_Active
+								lcall P2_Sound
 								INC State
 								ljmp Reset_Button_Status
 								S11_Pause:				mov 2, State
@@ -512,6 +586,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 								Player_2_Active:	jnb 09H, Serve_2
 																	jb 07H, P2_Miss
 											Serve_2:		setb 09H
+																	lcall P2_Sound
 																	INC State
 																	ljmp Reset_Button_Status
 											P2_Miss:		mov State, #17
