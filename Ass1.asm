@@ -2,8 +2,8 @@ $INClude (c8051f120.INC) ; Includes register definition file
 ;-----------------------------------------------------------------------------
 ; EQUATES
 ;-----------------------------------------------------------------------------
-	Score				equ				R1
-	State				equ				R4
+	Score				equ				R1							; Set Score in R1
+	State				equ				R4							; Set State in R4
 
 	org 0000H
 		ljmp Start 													; Locate a jump to the start of code at
@@ -19,68 +19,66 @@ $INClude (c8051f120.INC) ; Includes register definition file
         	mov P2MDOUT, 	#11111111b 			; Outputs
 					mov P3MDOUT,	#11111111b			;	Set LCD as output
         	mov XBR2, 		#40h						; Enable the Port I/O Crossbar
-					lcall Init_Devices					
+					lcall Init_Devices						;	Initialise DAC and voltage reference
 
 ;--------------------------------- Initialisation---------------------------------------
-;Add your assembly code in this section to:
-;Initialise internal variables eg State
-;etc
-	mov 	State, #0
-	mov 	Score, #0
-	mov 	20H, #0FFH
-	mov 	21H, #0	
-	mov 	22H, #0
-	setb	18H
-	mov		P2, #00000011b
+	mov 	State, #0												; Initialise game to Stop/Config State
+	mov 	Score, #0												; Initialise score to zero
+	mov 	20H, #0FFH											; Initialise input byte to default value (#0FFH)
+	mov 	21H, #0													; Initialise config byte to zero
+	mov 	22H, #0													; Initialise byte used in "score display" subroutine
+	mov		P2, #00000011b									;	Initialise LEDs to default config state
+	mov 	23H, #00000011b
 
 ;--------------------------------- Main Loop-------------------------------------------
-;Add your assembly code in this section to implement the State Machine
-
 	Main_loop:
-							mov 20H, #0FFH
-							mov A, State	; Shift current state into accumulator
-							rl A	; Mystery instruction: Hint: ajmp is 2 bytes long in code memory
-							mov	DPTR, #State_table
-							jmp @A+DPTR
-	State_table:
-							ajmp State_1	;Stop state
-							ajmp State_2	;Pre-game state (waiting for Player 1 to serve)
-							ajmp State_3	;Ball initialised to LD1
-							ajmp State_4	;Ball move right to LD2
-							ajmp State_5	;Ball move right to LD3
-							ajmp State_6	;Ball move right to LD4
-							ajmp State_7	;Ball move right to LD5
-							ajmp State_8	;Ball move right to LD6
-							ajmp State_9	;Ball move right to LD7
-							ajmp State_10	;Ball move right to LD8
-							ajmp State_11	;Ball move left to LD7
-							ajmp State_12	;Ball move left to LD6
-							ajmp State_13	;Ball move left to LD5
-							ajmp State_14	;Ball move left to LD4
-							ajmp State_15	;Ball move left to LD3
-							ajmp State_16	;Ball move left to LD2
-							ajmp State_17	;Ball move left to LD1
-							ajmp State_18	;P1 Scores
-							ajmp State_19	;P2 Scores
-							ajmp State_20	;Pause state
-							ajmp State_21	;Lose state
-							ajmp State_22	;P2 Serves
-	State_1:
-					mov Score, #0
-					lcall Button_Check
-					lcall Action
-					lcall Feedback_Delay
-					ajmp 	Main_loop
-	
-	State_2:	;Ball initialised to LD1, waiting for player to serve
-					mov P2, #00000001b
-					lcall Button_Check
-					lcall Action
-					lcall Feedback_Delay
-					ajmp Main_Loop
+							mov 20H, #0FFH								;Reset input status
+							mov A, State									;Shift current state into accumulator
+							rl A													;Rotate the accumulator left (i.e. double its held value)
+							mov	DPTR, #State_table				;Shift the datapointer to the state table's label
+							jmp @A+DPTR										;Jump to a location with a certain offset (A) from the datapointer
 
-	State_3:	;Ball initialised to LD1
-					lcall Button_Check
+	State_table:
+							ajmp State_1					;Stop state
+							ajmp State_2					;Pre-game state (waiting for Player 1 to serve)
+							ajmp State_3					;Ball initialised to LD1
+							ajmp State_4					;Ball move right to LD2
+							ajmp State_5					;Ball move right to LD3
+							ajmp State_6					;Ball move right to LD4
+							ajmp State_7					;Ball move right to LD5
+							ajmp State_8					;Ball move right to LD6
+							ajmp State_9					;Ball move right to LD7
+							ajmp State_10					;Ball move right to LD8
+							ajmp State_11					;Ball move left to LD7
+							ajmp State_12					;Ball move left to LD6
+							ajmp State_13					;Ball move left to LD5
+							ajmp State_14					;Ball move left to LD4
+							ajmp State_15					;Ball move left to LD3
+							ajmp State_16					;Ball move left to LD2
+							ajmp State_17					;Ball move left to LD1
+							ajmp State_18					;P1 Scores
+							ajmp State_19					;P2 Scores
+							ajmp State_20					;Pause state
+							ajmp State_21					;Lose state
+							ajmp State_22					;P2 Serves
+	
+	State_1:	;Take input from player(s) to determine configuration of game
+						;Save desired config in config byte
+					mov Score, #00H						;Initialise score to start new game
+					lcall Button_Check				;Check user input
+					lcall Action							;Run appropriate action for input/state combination
+					lcall Feedback_Delay			;Run delay to reduce risk of "double tap" inputs
+					ajmp 	Main_loop						;Return to main loop of state machine
+	
+	State_2:	;Ball initialised to LD1, waiting for player 1 to serve
+					mov P2, #00000001b				;Initialise "ball" for P1 serve
+					lcall Button_Check				;Check input
+					lcall Action							;Run action
+					lcall Feedback_Delay			;Input delay
+					ajmp Main_Loop						;Return
+
+	State_3:	;Enter play with ball at LD1 (return to this state upon ball return)
+					lcall Button_Check				
 					lcall Action
 					lcall Feedback_Delay
 					ajmp Main_Loop
@@ -215,7 +213,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 						mov P2, #0
 						lcall Flash_Delay
 						anl A, #1111b
-						dec A														;FIX ME
+						dec A														
 						jnz Flash2
 					mov A, Score
 					subb A, #0FH
@@ -234,6 +232,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					lcall Action
 					lcall Feedback_Delay
 					cjne R4, #19, Resume
+					mov 20H, #0FFH
 					sjmp Pause_Loop
 	Resume:	
 					ajmp Main_Loop
@@ -257,12 +256,14 @@ $INClude (c8051f120.INC) ; Includes register definition file
 		Esc:	lcall Main_Loop							;WHY???
 
 ;--------------------------------- Functions---------------------------------------
-;Add your assembly code functions for various tasks in this section
-
+	
+	
+;----------Initialisation Routines----------	
 	Init_Devices:
-    lcall DAC_Init
-    lcall Voltage_Reference_Init
-    ret
+    call DAC_Init
+    call Voltage_Reference_Init
+    call LCD_Init
+		ret
 	
 	DAC_Init:
     mov  SFRPAGE,   #DAC0_PAGE
@@ -274,55 +275,21 @@ $INClude (c8051f120.INC) ; Includes register definition file
     mov  REF0CN,    #003h
     ret
 
-	P1_Sound:
-					mov R3, #060H
-	Sound1:	mov DAC0H, #060H
-					lcall P1_Freq
-					mov DAC0H, #0
-					lcall P1_Freq
-					djnz R3, Sound1
-					ret
-	
-	P2_Sound:
-					mov R3, #060H
-	Sound2:	mov DAC0H, #060H
-					lcall P2_Freq
-					mov DAC0H, #0
-					lcall P2_Freq
-					djnz R3, Sound2
-					ret
 
-	P1_Freq:		;Delay to decrease risk of "double tap"
-				F1Loop2:	mov R7, #01h	
-				F1Loop1: 	mov R6, #04h
-				F1Loop0: 	mov R5, #00h
-        					djnz R5, $
-        					djnz R6, F1Loop0
-        					djnz R7, F1Loop1
-		ret
-
-	P2_Freq:		;Delay to decrease risk of "double tap"
-				F2Loop2:	mov R7, #01h	
-				F2Loop1: 	mov R6, #05h
-				F2Loop0: 	mov R5, #00h
-        					djnz R5, $
-        					djnz R6, F2Loop0
-        					djnz R7, F2Loop1
-		ret
-
-Ball_Right:				;Routine to move the light one position to the right
+;----------Action Routines----------	
+	Ball_Right:				;Routine to move the light one position to the right
 				mov A, P2
 				rl A
 				mov P2, A
 			ret
 
-	Ball_Left:
+	Ball_Left:				;Routine to move light one position to the left
 				mov A, P2
 				rr A
 				mov P2, A
 			ret
 
-	Display_Score:
+	Display_Score:		;Routine to reverse the byte that contains the score, allowing it to be displayed correctly on the LEDs
 				mov A, Score
 				rlc A
 				mov 10H, C
@@ -344,7 +311,7 @@ Ball_Right:				;Routine to move the light one position to the right
 				mov P2, 22H
 			ret				
 
-	Button_Check:								;Standard debouncing button check loop. Used in states with non-variable delays (ie pause, stop, serve)
+	Button_Check:						;Standard debouncing button check loop. Used in states with non-variable delays (ie pause, stop, serve)
 			BLoop2:		mov R7, #0AH	
 			BLoop1: 	mov R6, #00h
 			BLoop0: 	mov R5, #00h
@@ -359,8 +326,8 @@ Ball_Right:				;Routine to move the light one position to the right
 	Delay: 											;Variable Delay using subroutine "Get_Delay_Value" to set the correct delay for the selected speed setting
 				lcall Get_Delay_Value
 				Loop2:	mov R7, A	
-				Loop1: 	mov R6, #00h
-				Loop0: 	mov R5, #00h
+				Loop1: 	mov R6, #0F7h
+				Loop0: 	mov R5, #0FEh
       					lcall Button_Status			;Check button status throughout loop, ensuring that if a button is pressed during the delay it is still registered
 								djnz R5, $
        					djnz R6, Loop0
@@ -398,10 +365,10 @@ Ball_Right:				;Routine to move the light one position to the right
 									movc A, @A+DPTR
 									ret
 
-	Flash_Delay:		;Delay of approx 500ms to facilitate a flash of 1Hz when scores are displayed
-				FLoop2:		mov R7, #09h	
-				FLoop1: 	mov R6, #00h
-				FLoop0: 	mov R5, #00h
+	Flash_Delay:		;Delay of 500ms to facilitate a flash of 1Hz when scores are displayed
+				FLoop2:		mov R7, #08h	
+				FLoop1: 	mov R6, #0FCh
+				FLoop0: 	mov R5, #0FFh
         					djnz R5, $
         					djnz R6, FLoop0
         					djnz R7, FLoop1
@@ -458,9 +425,19 @@ Ball_Right:				;Routine to move the light one position to the right
 								jnb 01H, Player_Toggle
 								jnb 02H, Speed_Toggle
 								jnb 03H, Play
+								jnb 05H, Volume_Toggle
+								jnb 06H, Mute_Toggle
 								ret
+								Play:						mov 21H, P2								;When PB4 is pressed, save the current byte in P2 into the config byte (21H)
+																INC State									;Increment the state value to enter play state
+																lcall Menu_Beep
+																ret
+								Mute_Toggle:		cpl 1AH
+																lcall Menu_Beep
+																ret
 								Player_Toggle:	cpl P2.7									;If PB2 is pressed, toggle LD8
-																ljmp Reset_Button_Status
+																lcall Menu_Beep
+																ret
 								Speed_Toggle:		jnb 18H, Score_Dec				;Increment and then decrement lights in accordance to speed setting when PB3 is pressed
 																jnb P2.2, Spd_2
 																jnb P2.3, Spd_3
@@ -472,22 +449,53 @@ Ball_Right:				;Routine to move the light one position to the right
 																jb P2.4, Spd_4
 																jb P2.3, Spd_3
 																jb P2.2, Spd_2
-																ljmp Reset_Button_Status
+																ret
 																Spd_2:	cpl P2.2
 																				setb 18H
-																				ljmp Reset_Button_Status
+																				lcall Menu_Beep
+																				ret
 																Spd_3:	cpl P2.3
-																				ljmp Reset_Button_Status
+																				lcall Menu_Beep
+																				ret
 																Spd_4:	cpl P2.4
-																				ljmp Reset_Button_Status
+																				lcall Menu_Beep
+																				ret
 																Spd_5:	cpl P2.5
-																				ljmp Reset_Button_Status
+																				lcall Menu_Beep
+																				ret
 																Spd_6:	cpl P2.6
 																				clr 18H
-																				ljmp Reset_Button_Status
-								Play:						mov 21H, P2								;When PB4 is pressed, save the current byte in P2 into the config byte (21H)
-																INC State									;Increment the state value to enter play state
-																ljmp Reset_Button_Status
+																				lcall Menu_Beep
+																				ret
+								Volume_Toggle:jnb 19H, Vol_Dec				;Increment and then decrement lights in accordance to speed setting when PB3 is pressed
+															jnb 1BH, Vol_2
+															jnb 1CH, Vol_3
+															jnb 1DH, Vol_4
+															jnb 1EH, Vol_5
+															jnb 1FH, Vol_6
+									Vol_Dec:		jb 1FH, Vol_6
+															jb 1EH, Vol_5
+															jb 1DH, Vol_4
+															jb 1CH, Vol_3
+															jb 1BH, Vol_2
+															ret
+															Vol_2:	cpl 1BH
+																			setb 19H
+																			lcall Menu_Beep
+																			ret
+															Vol_3:	cpl 1CH
+																			lcall Menu_Beep
+																			ret
+															Vol_4:	cpl 1DH
+																			lcall Menu_Beep
+																			ret
+															Vol_5:	cpl 1EH
+																			lcall Menu_Beep
+																			ret
+															Vol_6:	cpl 1FH
+																			clr 19H
+																			lcall Menu_Beep
+																			ret
 
 
 		S2_Actions:							;P1 serve state allowable actions: Serve, Return to settings.
@@ -496,152 +504,178 @@ Ball_Right:				;Routine to move the light one position to the right
 								ret
 								P1_Serve:	mov State, #3
 													clr 08H			;Clear bit to to determine serve vs return ball
-													ljmp Reset_Button_Status
+													ret
 								Back:			dec State
 													mov P2, 21H
-													ljmp Reset_Button_Status
+													ret
 													
 		S3_Actions:
 								jnb 04H, S3_Pause			;If PB4 has been pressed, jump to pause state
+								jnb 03H, S3_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S3_Pause:	mov 2, State			;Store current state in 2 (cant use stack as the "ret" function will change the SP value)
-													mov State, #19		;Change state to #19 (the pause state) and return to the main loop
-													ljmp Reset_Button_Status
+								ret
+								S3_Pause:	lcall Pause
+													ret		;Change state to #19 (the pause state) and return to the main loop
+								S3_Stop:		lcall Stop
+														ret
 
 		S4_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S4_Pause
+								jnb 03H, S4_Stop
 								jnb 08H, Serve_1			;If bit 08H is clear then this is the serve (ie, no input required to send ball to other end)
 								jb 00H, P1_Miss				;If no input from button 1, jump to Player 1 Miss routine
 			Serve_1:	setb 08H							;Reset the serve indicator so that the next time this state is reached the player must use PB1 to return "ball"
 								lcall P1_Sound
 								INC State
-								ljmp Reset_Button_Status
-								S4_Pause:	mov 2, State
-													mov State, #19
-													ljmp Reset_Button_Status
+								ret
+								S4_Pause:	lcall Pause
+													ret
+								S4_Stop:	lcall Stop
+													ret
 								P1_Miss:	mov State, #18		;Change state to #18 (the player 2 win/player 1 miss state) and return to main loop
-													ljmp Reset_Button_Status
+													ret
 
 		S5_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S5_Pause
+								jnb 03H, S5_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S5_Pause:	mov 2, State
-													mov State, #19
-													ljmp Reset_Button_Status
+								ret
+								S5_Pause:	lcall Pause
+													ret
+								S5_Stop:		lcall Stop
+														ret
 
 		S6_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S6_Pause
+								jnb 03H, S6_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S6_Pause:	mov 2, State
-													mov State, #19
-													ljmp Reset_Button_Status
+								ret
+								S6_Pause:	lcall Pause
+													ret
+								S6_Stop:		lcall Stop
+														ret
 
 		S7_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S7_Pause
+								jnb 03H, S7_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S7_Pause:	mov 2, State
-													mov State, #19
-													ljmp Reset_Button_Status
+								ret
+								S7_Pause:	lcall Pause
+													ret
+								S7_Stop:		lcall Stop
+														ret
 
 		S8_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S8_Pause
+								jnb 03H, S8_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S8_Pause:	mov 2, State
-													mov State, #19
-													ljmp Reset_Button_Status
+								ret
+								S8_Pause:	lcall Pause
+													ret
+								S8_Stop:	lcall Stop
+													ret
 
 		S9_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S9_Pause
+								jnb 03H, S9_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S9_Pause:	mov 2, State
-													mov State, #19
-													ljmp Reset_Button_Status
+								ret
+								S9_Pause:	lcall Pause
+													ret
+								S9_Stop:	lcall Stop
+													ret
 
 		S10_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S10_Pause
+								jnb 03H, S10_Stop
 								jnb 07H, P2_Hold
 								INC State
-								ljmp Reset_Button_Status
-								S10_Pause:	mov 2, State
-														mov State, #19
-														ljmp Reset_Button_Status
+								ret
+								S10_Pause:	lcall Pause
+														ret
+								S10_Stop:		lcall Stop
+														ret
 								P2_Hold:		mov State, #17
-														ljmp Reset_Button_Status
 
 		S11_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S11_Pause
+								jnb 03H, S11_Stop
 								jb 0FH, Player_2_Active
 								lcall P2_Sound
 								INC State
-								ljmp Reset_Button_Status
-								S11_Pause:				mov 2, State
-																	mov State, #19
-																	ljmp Reset_Button_Status
+								ret
+								S11_Pause:	lcall Pause
+														ret
+								S11_Stop:		lcall Stop
+														ret
 								Player_2_Active:	jnb 09H, Serve_2
 																	jb 07H, P2_Miss
 											Serve_2:		setb 09H
 																	lcall P2_Sound
 																	INC State
-																	ljmp Reset_Button_Status
+																	ret
 											P2_Miss:		mov State, #17
-																	ljmp Reset_Button_Status		
+																	ret		
 
 		S12_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S12_Pause
+								jnb 03H, S12_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S12_Pause:	mov 2, State
-														mov State, #19
-														ljmp Reset_Button_Status
+								ret
+								S12_Pause:	lcall Pause
+														ret
+								S12_Stop:		lcall Stop
+														ret
 
 		S13_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S13_Pause
+								jnb 03H, S13_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S13_Pause:	mov 2, State
-														mov State, #19
-														ljmp Reset_Button_Status
+								ret
+								S13_Pause:	lcall Pause
+														ret
+								S13_Stop:		lcall Stop
+														ret
 
 		S14_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S14_Pause
+								jnb 03H, S14_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S14_Pause:	mov 2, State
-														mov State, #19
-														ljmp Reset_Button_Status
+								ret
+								S14_Pause:	lcall Pause
+														ret
+								S14_Stop:		lcall Stop
+														ret
 
 		S15_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S15_Pause
+								jnb 03H, S15_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S15_Pause:	mov 2, State
-														mov State, #19
-														ljmp Reset_Button_Status
+								ret
+								S15_Pause:	lcall Pause
+														ret
+								S15_Stop:		lcall Stop
+														ret
 
 		S16_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S16_Pause
+								jnb 03H, S16_Stop
 								INC State
-								ljmp Reset_Button_Status
-								S16_Pause:	mov 2, State
-														mov State, #19
-														ljmp Reset_Button_Status
+								ret
+								S16_Pause:	lcall Pause
+														ret
+								S16_Stop:		lcall Stop
+														ret
 
 		S17_Actions:												;Pause if required, else increment state and return to main loop
 								jnb 04H, S17_Pause
 								jnb 00H, P1_Hold
 								mov State, #3
-								ljmp Reset_Button_Status
-								S17_Pause:	mov 2, State
-														mov State, #19
-														ljmp Reset_Button_Status
+								ret
+								S17_Pause:	lcall Pause
+														ret
 								P1_Hold:		mov State, #18
-														ljmp Reset_Button_Status
+														ret
 
 		S18_Actions:
 								;No actions taken in point states
@@ -654,21 +688,15 @@ Ball_Right:				;Routine to move the light one position to the right
 								ret
 								Unpause: 	mov State, 2
 													mov P2, R3
-													ljmp Reset_Button_Status
-								Quit: 		mov State, #0
-													setb 08H
-													setb 09H
-													mov P2, 21H
-													ljmp Reset_Button_Status
+													ret
+								Quit: 		lcall Stop
+													ret
 
 		S21_Actions:
 								jnb 03H, End_Game
 								ret
-								End_Game:	mov State, #0
-													setb 08H
-													setb 09H
-													mov P2, 21H
-													ljmp Reset_Button_Status
+								End_Game:	lcall Stop
+													ret
 
 		S22_Actions:
 								jnb 07H, P2_Serve
@@ -676,22 +704,118 @@ Ball_Right:				;Routine to move the light one position to the right
 								ret
 								P2_Serve:	mov State, #10
 													clr 09H
-													ljmp Reset_Button_Status
-								Back2:		mov State, #0
-													setb 08H
-													setb 09H
-													mov P2, 21H
-													ljmp Reset_Button_Status
-		
+													ret
+								Back2:		lcall Stop
+													ret
+				
+		Pause:	
+						mov 2, State
+						mov State, #19
+						ret
 
-		Reset_Button_Status:
-								mov 20H, #0FFH
-								ret
-		
+		Stop:
+						setb 08H
+						setb 09H
+						mov State, #0
+						mov P2, 21H
+						ret
+
+;----------Sound Related Subroutines----------;
+
+	Get_Volume_Value:						;Subroutine that uses the audio config byte (23H) to determine the volume setting.
+				jb 1AH, Mute
+				jb 1FH, Volume_6
+				jb 1EH, Volume_5
+				jb 1DH, Volume_4
+				jb 1CH, Volume_3
+				jb 1BH, Volume_2
+				mov A, #0
+				mov DPTR, #Volume_Value	;Delay value retrieved from lookup table
+				movc A, @A+DPTR
+				ret
+				Volume_2:	mov A, #1
+									mov DPTR, #Volume_Value
+									movc A, @A+DPTR
+									ret
+				Volume_3:	mov A, #2
+									mov DPTR, #Volume_Value
+									movc A, @A+DPTR
+									ret
+				Volume_4: mov A, #3
+									mov DPTR, #Volume_Value
+									movc A, @A+DPTR
+									ret
+				Volume_5: mov A, #4
+									mov DPTR, #Volume_Value
+									movc A, @A+DPTR
+									ret
+				Volume_6: mov A, #5
+									mov DPTR, #Volume_Value
+									movc A, @A+DPTR
+									ret
+				Mute:			mov A, #0
+									ret
+
+	P1_Sound:
+					lcall Get_Volume_Value
+					mov R3, #070H
+	Sound1:	mov DAC0H, A
+					call P1_Freq
+					mov DAC0H, #0
+					call P1_Freq
+					djnz R3, Sound1
+					ret
+
+	P1_Freq:		;Delay to decrease risk of "double tap"
+				F1Loop2:	mov R7, #01h	
+				F1Loop1: 	mov R6, #04h
+				F1Loop0: 	mov R5, #00h
+        					djnz R5, $
+        					djnz R6, F1Loop0
+        					djnz R7, F1Loop1
+		ret
+	
+	P2_Sound:
+					lcall Get_Volume_Value
+					mov R3, #070H
+	Sound2:	mov DAC0H, A
+					call P2_Freq
+					mov DAC0H, #0
+					call P2_Freq
+					djnz R3, Sound2
+					ret
+
+	P2_Freq:		;Delay to decrease risk of "double tap"
+				F2Loop2:	mov R7, #01h	
+				F2Loop1: 	mov R6, #05h
+				F2Loop0: 	mov R5, #00h
+        					djnz R5, $
+        					djnz R6, F2Loop0
+        					djnz R7, F2Loop1
+		ret
+
+	Menu_Beep:
+					lcall Get_Volume_Value
+					mov R3, #20H
+	Beep:		mov DAC0H, A
+					call Beep_Freq
+					mov DAC0H, #0
+					call Beep_Freq
+					djnz R3, Beep
+					ret
+
+	Beep_Freq:		;Delay to decrease risk of "double tap"
+				F3Loop2:	mov R7, #01h	
+				F3Loop1: 	mov R6, #03h
+				F3Loop0: 	mov R5, #00h
+        					djnz R5, $
+        					djnz R6, F3Loop0
+        					djnz R7, F3Loop1
+		ret
 
 ;--------------------------------Lookup Table--------------------------------------
-; To use this table, in main code use "mov dptr,#Some_Value"
-; then move table index value into accumulator, then use "movc a,@a+dptr",
-        ; and finally output accumulator to the related output port
 Delay_Value: db 10H,0DH,0AH,07H,04H,01H
+Sound_Freq_Value: db 01H,03H,05H,07H,09H,0BH
+Sound_Length: db 20H,60H
+Volume_Value: db 20H,40H,60H,80H,0B0H,0FFH
 END
