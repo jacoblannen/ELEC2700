@@ -2,8 +2,15 @@ $INClude (c8051f120.INC) ; Includes register definition file
 ;-----------------------------------------------------------------------------
 ; EQUATES
 ;-----------------------------------------------------------------------------
+	Temp				equ				R0
 	Score				equ				R1							; Set Score in R1
 	State				equ				R4							; Set State in R4
+	LCD_Data		equ				P3
+	LCD_D7			equ				P3.3
+	LCD_RS			equ				P3.4
+	LCD_RW			equ				P3.5
+	LCD_EN			equ				P3.6
+
 
 	org 0000H
 		ljmp Start 													; Locate a jump to the start of code at
@@ -29,6 +36,9 @@ $INClude (c8051f120.INC) ; Includes register definition file
 	mov 	22H, #0													; Initialise byte used in "score display" subroutine
 	mov		P2, #00000011b									;	Initialise LEDs to default config state
 	mov 	23H, #00000011b
+	mov 	DPTR, #Stop_string							; Initialise LCD screen to display "Configure: " string
+	lcall LCD_String
+
 
 ;--------------------------------- Main Loop-------------------------------------------
 	Main_loop:
@@ -182,6 +192,12 @@ $INClude (c8051f120.INC) ; Includes register definition file
 	Pause17:ajmp Main_Loop
 
 	State_18:	;P1 Scores
+					lcall LCD_clr
+					mov DPTR, #P1_point_string1
+					lcall LCD_string
+					lcall LCD_line2
+					mov DPTR, #P1_point_string2
+					lcall LCD_string
 					clr C
 					mov A, Score
 					add A, #00010000b
@@ -197,13 +213,31 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					mov A, Score
 					add A, #00010000b
 					jb PSW.7, Lose1
+					lcall LCD_clr
+					mov DPTR, #P2_serve_string1
+					lcall LCD_string
+					lcall LCD_line2
+					mov DPTR, #P2_serve_string2
+					lcall LCD_string
 					mov State, #21				;Jump to P2 serve state.
 					ajmp Main_Loop
-		Lose1:clr C
+		Lose1:lcall LCD_clr
+					mov DPTR, #Game_over_string
+					lcall LCD_string
+					lcall LCD_line2
+					mov DPTR, #P1_win_string
+					lcall LCD_string
+					clr C
 					mov State, #20
 					ajmp Main_Loop
 
 	State_19:	;P2 Scores
+					lcall LCD_clr
+					mov DPTR, #P2_point_string1
+					lcall LCD_string
+					lcall LCD_line2
+					mov DPTR, #P2_point_string2
+					lcall LCD_string
 					clr C
 					mov A, Score
 					add A, #00000001b
@@ -218,9 +252,21 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					mov A, Score
 					subb A, #0FH
 					jz Lose2
+					lcall LCD_clr
+					mov DPTR, #P1_serve_string1
+					lcall LCD_string
+					lcall LCD_line2
+					mov DPTR, #P1_serve_string2
+					lcall LCD_string
 					mov State, #1				;Return state to "pre-game" state
 					ajmp Main_Loop
-		Lose2:clr 0D6H
+		Lose2:lcall LCD_clr
+					mov DPTR, #Game_over_string
+					lcall LCD_string
+					lcall LCD_line2
+					mov DPTR, #P2_win_string
+					lcall LCD_string
+					clr 0D6H
 					mov State, #20
 					ajmp Main_Loop
 
@@ -253,7 +299,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 					lcall Feedback_Delay
 					cjne R4, #21, Esc
 					sjmp State_22
-		Esc:	lcall Main_Loop							;WHY???
+		Esc:	lcall Main_Loop							
 
 ;--------------------------------- Functions---------------------------------------
 	
@@ -275,42 +321,22 @@ $INClude (c8051f120.INC) ; Includes register definition file
     mov  REF0CN,    #003h
     ret
 
+	LCD_Init:
+		lcall LCD_Reset
+		mov A, #28H						;Format: 4-bit input, 2 line, 5x7 font
+		lcall LCD_cmd
+		mov A, #0CH						;Display on, cursor off
+		lcall LCD_cmd
+		mov A, #01H						;Clear display
+		lcall LCD_cmd
+		mov A, #06H						;Input mode: auto inc, no shift
+		lcall LCD_cmd
+		mov A, #80H						;Reset cursor
+		lcall LCD_cmd
+		ret
 
-;----------Action Routines----------	
-	Ball_Right:				;Routine to move the light one position to the right
-				mov A, P2
-				rl A
-				mov P2, A
-			ret
 
-	Ball_Left:				;Routine to move light one position to the left
-				mov A, P2
-				rr A
-				mov P2, A
-			ret
-
-	Display_Score:		;Routine to reverse the byte that contains the score, allowing it to be displayed correctly on the LEDs
-				mov A, Score
-				rlc A
-				mov 10H, C
-				rlc A
-				mov 11H, C
-				rlc A
-				mov 12H, C
-				rlc A
-				mov 13H, C
-				rlc A
-				mov 14H, C
-				rlc A
-				mov 15H, C
-				rlc A
-				mov 16H, C
-				rlc A
-				mov 17H, C
-				clr C
-				mov P2, 22H
-			ret				
-
+;----------Delay-related Routines----------
 	Button_Check:						;Standard debouncing button check loop. Used in states with non-variable delays (ie pause, stop, serve)
 			BLoop2:		mov R7, #0AH	
 			BLoop1: 	mov R6, #00h
@@ -382,14 +408,26 @@ $INClude (c8051f120.INC) ; Includes register definition file
         					djnz R6, FBLoop0
         					djnz R7, FBLoop1
 		ret
-	Button_Status:	;Subroutine to take any input from the push buttons and save it into bit-addressable memory for reference (byte 20H)
-								mov R0, P1
-								cjne R0, #0FFH, Input		;If button status is not FF (ie, if a button is being pressed) jump to input line, else return
-								ret
-				Input: 	mov 20H, R0							;Send button status to byte 20H in bit-addressable memory IF any button is pressed
-								ret
+	LCD_Init_Delay:		;Delay of 50ms to allow for all required delays during LCD initialisation
+			LCDILoop2:	mov R7, #04h	
+			LCDILoop1: 	mov R6, #033h
+			LCDILoop0: 	mov R5, #0FDh
+        					djnz R5, $
+        					djnz R6, LCDILoop0
+        					djnz R7, LCDILoop1
+		ret
 
-	
+	LCD_Delay:		;Delay of 1ms to allow time for LCD to recieve and write data
+			LCDLoop2:		mov R7, #01h	
+			LCDLoop1: 	mov R6, #05h
+			LCDLoop0: 	mov R5, #0CDh
+        					djnz R5, $
+        					djnz R6, LCDLoop0
+        					djnz R7, LCDLoop1
+		ret
+
+
+;----------Action Routines----------	
 	Action:			;Action subroutine containing the allowed user actions for each state, and their results. 
 							mov A, State	; Shift current state into accumulator
 							rl A
@@ -422,80 +460,31 @@ $INClude (c8051f120.INC) ; Includes register definition file
 
 
 		S1_Actions:					;Allowable actions for State 1: Toggle players, toggle speed, enter play state.
-								jnb 01H, Player_Toggle
-								jnb 02H, Speed_Toggle
+								jnb 01H, toggle_players
+								jnb 02H, toggle_speed
 								jnb 03H, Play
-								jnb 05H, Volume_Toggle
+								jnb 05H, toggle_volume
 								jnb 06H, Mute_Toggle
 								ret
-								Play:						mov 21H, P2								;When PB4 is pressed, save the current byte in P2 into the config byte (21H)
+								Play:						lcall LCD_clr
+																mov DPTR, #P1_serve_string1
+																lcall LCD_string
+																lcall LCD_line2
+																mov DPTR, #P1_serve_string2
+																lcall LCD_string
+																mov 21H, P2								;When PB4 is pressed, save the current byte in P2 into the config byte (21H)
 																INC State									;Increment the state value to enter play state
 																lcall Menu_Beep
 																ret
 								Mute_Toggle:		cpl 1AH
 																lcall Menu_Beep
 																ret
-								Player_Toggle:	cpl P2.7									;If PB2 is pressed, toggle LD8
-																lcall Menu_Beep
+								toggle_players:	lcall Player_toggle
 																ret
-								Speed_Toggle:		jnb 18H, Score_Dec				;Increment and then decrement lights in accordance to speed setting when PB3 is pressed
-																jnb P2.2, Spd_2
-																jnb P2.3, Spd_3
-																jnb P2.4, Spd_4
-																jnb P2.5, Spd_5
-																jnb P2.6, Spd_6
-										Score_Dec:	jb P2.6, Spd_6
-																jb P2.5, Spd_5
-																jb P2.4, Spd_4
-																jb P2.3, Spd_3
-																jb P2.2, Spd_2
+								toggle_speed:		lcall Speed_toggle
 																ret
-																Spd_2:	cpl P2.2
-																				setb 18H
-																				lcall Menu_Beep
-																				ret
-																Spd_3:	cpl P2.3
-																				lcall Menu_Beep
-																				ret
-																Spd_4:	cpl P2.4
-																				lcall Menu_Beep
-																				ret
-																Spd_5:	cpl P2.5
-																				lcall Menu_Beep
-																				ret
-																Spd_6:	cpl P2.6
-																				clr 18H
-																				lcall Menu_Beep
-																				ret
-								Volume_Toggle:jnb 19H, Vol_Dec				;Increment and then decrement lights in accordance to speed setting when PB3 is pressed
-															jnb 1BH, Vol_2
-															jnb 1CH, Vol_3
-															jnb 1DH, Vol_4
-															jnb 1EH, Vol_5
-															jnb 1FH, Vol_6
-									Vol_Dec:		jb 1FH, Vol_6
-															jb 1EH, Vol_5
-															jb 1DH, Vol_4
-															jb 1CH, Vol_3
-															jb 1BH, Vol_2
-															ret
-															Vol_2:	cpl 1BH
-																			setb 19H
-																			lcall Menu_Beep
-																			ret
-															Vol_3:	cpl 1CH
-																			lcall Menu_Beep
-																			ret
-															Vol_4:	cpl 1DH
-																			lcall Menu_Beep
-																			ret
-															Vol_5:	cpl 1EH
-																			lcall Menu_Beep
-																			ret
-															Vol_6:	cpl 1FH
-																			clr 19H
-																			lcall Menu_Beep
-																			ret
+								toggle_volume:	lcall Volume_toggle
+																ret
 
 
 		S2_Actions:							;P1 serve state allowable actions: Serve, Return to settings.
@@ -505,7 +494,10 @@ $INClude (c8051f120.INC) ; Includes register definition file
 								P1_Serve:	mov State, #3
 													clr 08H			;Clear bit to to determine serve vs return ball
 													ret
-								Back:			dec State
+								Back:			lcall LCD_clr
+													mov DPTR, #Stop_string						
+													lcall LCD_String
+													dec State
 													mov P2, 21H
 													ret
 													
@@ -688,6 +680,8 @@ $INClude (c8051f120.INC) ; Includes register definition file
 								ret
 								Unpause: 	mov State, 2
 													mov P2, R3
+													mov DPTR, #Play_string
+													lcall LCD_string
 													ret
 								Quit: 		lcall Stop
 													ret
@@ -707,10 +701,55 @@ $INClude (c8051f120.INC) ; Includes register definition file
 													ret
 								Back2:		lcall Stop
 													ret
+
+	Ball_Right:				;Routine to move the light one position to the right
+				mov A, P2
+				rl A
+				mov P2, A
+			ret
+
+	Ball_Left:				;Routine to move light one position to the left
+				mov A, P2
+				rr A
+				mov P2, A
+			ret
+
+	Display_Score:		;Routine to reverse the byte that contains the score, allowing it to be displayed correctly on the LEDs
+				mov A, Score
+				rlc A
+				mov 10H, C
+				rlc A
+				mov 11H, C
+				rlc A
+				mov 12H, C
+				rlc A
+				mov 13H, C
+				rlc A
+				mov 14H, C
+				rlc A
+				mov 15H, C
+				rlc A
+				mov 16H, C
+				rlc A
+				mov 17H, C
+				clr C
+				mov P2, 22H
+			ret				
+
+	Button_Status:	;Subroutine to take any input from the push buttons and save it into bit-addressable memory for reference (byte 20H)
+								mov R0, P1
+								cjne R0, #0FFH, Input		;If button status is not FF (ie, if a button is being pressed) jump to input line, else return
+								ret
+				Input: 	mov 20H, R0							;Send button status to byte 20H in bit-addressable memory IF any button is pressed
+								ret
+
+	
 				
 		Pause:	
 						mov 2, State
 						mov State, #19
+						mov DPTR, #Pause_string
+						lcall LCD_string
 						ret
 
 		Stop:
@@ -718,17 +757,133 @@ $INClude (c8051f120.INC) ; Includes register definition file
 						setb 09H
 						mov State, #0
 						mov P2, 21H
+						lcall LCD_clr
+						mov DPTR, #Stop_string
+						lcall LCD_string
 						ret
+;---------------Config Subroutines---------------
+	Player_Toggle:
+								lcall LCD_line2
+								mov DPTR, #Player_string
+								lcall LCD_string
+								cpl P2.7									;If PB2 is pressed, toggle LD8
+								jnb P2.7, display_1
+								mov A, #'2'
+								lcall LCD_dat
+								lcall Menu_Beep
+								ret
+		display_1:	mov A, #'1'
+								lcall LCD_dat
+								lcall Menu_Beep
+								ret
+
+	Speed_Toggle:		
+							lcall LCD_line2
+							mov DPTR, #Speed_string
+							lcall LCD_string
+							mov A, #0C7H
+							lcall LCD_cmd
+							jnb 18H, Score_Dec				;Increment and then decrement lights in accordance to speed setting when PB3 is pressed
+							jnb P2.2, Spd_2
+							jnb P2.3, Spd_3
+							jnb P2.4, Spd_4
+							jnb P2.5, Spd_5
+							jnb P2.6, Spd_6
+		Score_Dec:jb P2.6, Spd_6
+							jb P2.5, Spd_5
+							jb P2.4, Spd_4
+							jb P2.3, Spd_3
+							jb P2.2, Spd_2
+							ret
+							Spd_2:	cpl P2.2
+											setb 18H
+											lcall Menu_Beep
+											jnb P2.2, Disp_S1
+											mov A, #'2'
+											lcall LCD_dat
+											ret
+							Disp_S1:mov A, #'1'
+											lcall LCD_dat
+											ret
+							Spd_3:	cpl P2.3
+											lcall Menu_Beep
+											jnb P2.3, Disp_S2
+											mov A, #'3'
+											lcall LCD_dat
+											ret
+							Disp_S2:mov A, #'2'
+											lcall LCD_dat
+											ret
+							Spd_4:	cpl P2.4
+											lcall Menu_Beep
+											jnb P2.4, Disp_S3
+											mov A, #'4'
+											lcall LCD_dat
+											ret
+							Disp_S3:mov A, #'3'
+											lcall LCD_dat
+											ret
+							Spd_5:	cpl P2.5
+											lcall Menu_Beep
+											jnb P2.5, Disp_S4
+											mov A, #'5'
+											lcall LCD_dat
+											ret
+							Disp_S4:mov A, #'4'
+											lcall LCD_dat
+											ret
+							Spd_6:	cpl P2.6
+											clr 18H
+											lcall Menu_Beep
+											jnb P2.6, Disp_S5
+											mov A, #'6'
+											lcall LCD_dat
+											ret
+							Disp_S5:mov A, #'5'
+											lcall LCD_dat
+											ret
+
+	Volume_Toggle:
+						
+						jnb 19H, Vol_Dec				;Increment and then decrement lights in accordance to speed setting when PB3 is pressed
+						jnb 1BH, Vol_2
+						jnb 1CH, Vol_3
+						jnb 1DH, Vol_4
+						jnb 1EH, Vol_5
+						jnb 1FH, Vol_6
+		Vol_Dec:jb 1FH, Vol_6
+						jb 1EH, Vol_5
+						jb 1DH, Vol_4
+						jb 1CH, Vol_3
+						jb 1BH, Vol_2
+						ret
+						Vol_2:	cpl 1BH
+										setb 19H
+										lcall Menu_Beep
+										ret
+						Vol_3:	cpl 1CH
+										lcall Menu_Beep
+										ret
+						Vol_4:	cpl 1DH
+										lcall Menu_Beep
+										ret
+						Vol_5:	cpl 1EH
+										lcall Menu_Beep
+										ret
+						Vol_6:	cpl 1FH
+										clr 19H
+										lcall Menu_Beep
+
 
 ;----------Sound Related Subroutines----------;
 
 	Get_Volume_Value:						;Subroutine that uses the audio config byte (23H) to determine the volume setting.
-				jb 1AH, Mute
 				jb 1FH, Volume_6
 				jb 1EH, Volume_5
 				jb 1DH, Volume_4
 				jb 1CH, Volume_3
 				jb 1BH, Volume_2
+				jb 1AH, Mute
 				mov A, #0
 				mov DPTR, #Volume_Value	;Delay value retrieved from lookup table
 				movc A, @A+DPTR
@@ -813,9 +968,108 @@ $INClude (c8051f120.INC) ; Includes register definition file
         					djnz R7, F3Loop1
 		ret
 
+;----------LCD Subroutines----------
+
+	LCD_Reset:
+				lcall LCD_Init_Delay
+				mov LCD_Data, #0FFh
+				lcall LCD_Init_Delay
+				mov LCD_Data, #43h
+				mov LCD_Data, #03h
+				lcall LCD_Init_Delay
+				mov LCD_Data, #43h
+				mov LCD_Data, #03h
+				lcall LCD_Init_Delay
+				mov LCD_Data, #43h
+				mov LCD_Data, #03h
+				lcall LCD_Init_Delay
+				mov LCD_Data, #42h
+				mov LCD_Data, #02h
+				lcall LCD_Init_Delay
+			ret
+
+	LCD_cmd:
+				mov temp, A
+				swap A
+				anl A, #0FH
+				add A, #40H
+				mov LCD_Data, A
+				mov A, temp
+				anl A, #0FH
+				mov LCD_Data, A
+				
+				mov A, temp
+				anl A, #0FH
+				add A, #40H
+				mov LCD_Data, A
+				mov A, temp
+				anl A, #0FH
+				mov LCD_Data, A
+				lcall LCD_Delay
+				ret
+
+	LCD_dat:
+				mov temp, A
+				swap A
+				anl A, #0FH
+				add A, #050H
+				mov LCD_Data, A
+				nop
+				clr LCD_EN
+
+				mov A, temp
+				anl A, #0FH
+				add A, #050H
+				mov LCD_Data, A
+				nop
+				clr LCD_EN
+
+				lcall LCD_Delay
+
+				ret
+
+	LCD_string:
+			clr A
+			movc A, @A+DPTR
+			jz end_string
+			lcall LCD_dat
+			INC DPTR
+			sjmp LCD_string
+		end_string:
+			ret
+
+	LCD_clr:
+			mov A, #01H
+			lcall LCD_cmd
+			mov A, #80H
+			lcall LCD_cmd
+			ret
+
+	LCD_line2:
+			mov A, #0C0H
+			lcall LCD_cmd
+			ret
+
 ;--------------------------------Lookup Table--------------------------------------
 Delay_Value: db 10H,0DH,0AH,07H,04H,01H
-Sound_Freq_Value: db 01H,03H,05H,07H,09H,0BH
-Sound_Length: db 20H,60H
 Volume_Value: db 20H,40H,60H,80H,0B0H,0FFH
+
+;--------------Strings--------------
+Stop_string: db "Configure:",00H
+Play_string: db "      Play      ",00H
+P1_point_string1: db "Player One wins",00H
+P1_point_string2: db "point!",00H
+P2_point_string1: db "Player Two wins",00H
+P2_point_string2: db "point!",00H
+P1_serve_string1: db "Player One",00H
+P1_serve_string2: db "to serve...",00H
+P2_serve_string1: db "Player Two",00H
+P2_serve_string2: db "to serve...",00H
+Player_string: db "Players: ",00H
+Speed_string: db "Speed:          ",00H
+Pause_string:	db "    ~Pause~     ",00H
+Game_over_string: db "GAME OVER",00H
+P1_win_string: db "PLAYER ONE WINS!",00H
+P2_win_string: db "PLAYER TWO WINS!",00H
+
 END
