@@ -36,9 +36,9 @@ $INClude (c8051f120.INC) ; Includes register definition file
 	mov 	22H, #0													; Initialise byte used in "score display" subroutine
 	mov		P2, #00000011b									;	Initialise LEDs to default config state
 	mov 	23H, #00000011b
-	mov 	DPTR, #Stop_string							; Initialise LCD screen to display "Configure: " string
-	lcall LCD_String
-
+	;mov 	DPTR, #Stop_string							; Initialise LCD screen to display "Configure: " string
+	;lcall LCD_String
+	lcall LCD_points
 
 ;--------------------------------- Main Loop-------------------------------------------
 	Main_loop:
@@ -74,7 +74,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 	
 	State_1:	;Take input from player(s) to determine configuration of game
 						;Save desired config in config byte
-					mov Score, #00H						;Initialise score to start new game
+					mov Score, #0						;Initialise score to start new game
 					lcall Button_Check				;Check user input
 					lcall Action							;Run appropriate action for input/state combination
 					lcall Feedback_Delay			;Run delay to reduce risk of "double tap" inputs
@@ -192,114 +192,103 @@ $INClude (c8051f120.INC) ; Includes register definition file
 	Pause17:ajmp Main_Loop
 
 	State_18:	;P1 Scores
-					lcall LCD_clr
-					mov DPTR, #P1_point_string1
-					lcall LCD_string
-					lcall LCD_line2
-					mov DPTR, #P1_point_string2
+					lcall LCD_clr										;Clear LCD and display P1 point string
+					mov DPTR, #P1_point_string
 					lcall LCD_string
 					clr C
 					mov A, Score
-					add A, #00010000b
+					add A, #00010000b								;Increment upper nibble of score byte
 					mov Score, A
-					subb A, #00010000b
-		Flash1:	mov P2, #00000001b
+					swap A
+					anl A, #0FH											;Swap nibbles and mask upper nibble (leaving P1's score)
+		Flash1:	mov P2, #00000001b						;Flash LD1 at a frequency of 1Hz for each point P1 has scored
 						lcall Flash_Delay
 						mov P2, #0
 						lcall Flash_Delay
-						subb A, #00010000b
-						jnb PSW.7, Flash1
-						clr PSW.7
+						dec A
+						jnz Flash1
 					mov A, Score
-					add A, #00010000b
-					jb PSW.7, Lose1
-					lcall LCD_clr
-					mov DPTR, #P2_serve_string1
+					swap A
+					anl A, #0FH
+					subb A, #0FH
+					jz Lose1												;If score = 15 jump to game over route
+					lcall LCD_clr										;Reset LCD to display P2 serve string
+					mov DPTR, #P2_serve_string
 					lcall LCD_string
-					lcall LCD_line2
-					mov DPTR, #P2_serve_string2
-					lcall LCD_string
-					mov State, #21				;Jump to P2 serve state.
+					mov State, #21									;Jump to P2 serve state.
 					ajmp Main_Loop
-		Lose1:lcall LCD_clr
+		Lose1:lcall LCD_clr										;Reset LCD and display game over strings
 					mov DPTR, #Game_over_string
 					lcall LCD_string
 					lcall LCD_line2
 					mov DPTR, #P1_win_string
 					lcall LCD_string
-					clr C
-					mov State, #20
+					mov State, #20									;Jump to game over state
 					ajmp Main_Loop
 
 	State_19:	;P2 Scores
-					lcall LCD_clr
-					mov DPTR, #P2_point_string1
-					lcall LCD_string
-					lcall LCD_line2
-					mov DPTR, #P2_point_string2
+					lcall LCD_clr										;Clear LCD and display P2 point string
+					mov DPTR, #P2_point_string
 					lcall LCD_string
 					clr C
-					mov A, Score
-					add A, #00000001b
+					mov A, Score										
+					add A, #00000001b								;Increment the lower nibble of score byte
 					mov Score, A
-		Flash2:	mov P2, #10000000b
+					anl A, #0FH											;Bitmask upper nibble (leaving only P2's score in the Acc)
+		Flash2:	mov P2, #10000000b						;Flash LD8 at a frequency of 1Hz for each point P2 has scored
 						lcall Flash_Delay
 						mov P2, #0
 						lcall Flash_Delay
-						anl A, #1111b
 						dec A														
 						jnz Flash2
 					mov A, Score
-					subb A, #0FH
+					anl A, #0FH
+					subb A, #0FH										;If score = 15, jump to P2 win path
 					jz Lose2
-					lcall LCD_clr
-					mov DPTR, #P1_serve_string1
+					lcall LCD_clr										;Reset LCD to display P1 serve string
+					mov DPTR, #P1_serve_string
 					lcall LCD_string
-					lcall LCD_line2
-					mov DPTR, #P1_serve_string2
-					lcall LCD_string
-					mov State, #1				;Return state to "pre-game" state
+					mov State, #1										;Return to P1 serve state
 					ajmp Main_Loop
-		Lose2:lcall LCD_clr
-					mov DPTR, #Game_over_string
+		Lose2:lcall LCD_clr										;Clear LCD and display game over strings
+					mov DPTR, #Game_over_string			
 					lcall LCD_string
 					lcall LCD_line2
 					mov DPTR, #P2_win_string
 					lcall LCD_string
-					clr 0D6H
-					mov State, #20
+					mov State, #20									;Jump to game over state
 					ajmp Main_Loop
 
 	State_20:	;Pause State
-					mov R3, P2
+					mov R3, P2											;Move current light status to R3 for temp storage
 	Pause_Loop:				
-					lcall Display_Score
-					lcall Button_Check
-					lcall Action
-					lcall Feedback_Delay
-					cjne R4, #19, Resume
-					mov 20H, #0FFH
+					lcall Display_Score							;Call routine to display score on LEDs
+					lcall Button_Check							;Check inputs
+					lcall Action										;Perform action
+					lcall Feedback_Delay						;Run feedback delay
+					cjne R4, #19, Resume						;If action subroutine has caused change in state, exit pause loop
+					mov 20H, #0FFH									;Reset input status
 					sjmp Pause_Loop
 	Resume:	
-					ajmp Main_Loop
+					ajmp Main_Loop									;Return to main loop
 
 	State_21: ;Game Over State
-					lcall Display_Score
-					lcall Button_Check
-					lcall Action
-					lcall Feedback_Delay
-					cjne R4, #0, State_21
-					mov P2, 021H
-					ajmp Main_Loop
+					lcall Display_Score							;Display final score on LEDs
+					lcall Button_Check							;Check inputs
+					lcall Action										;Perform action
+					lcall Feedback_Delay						;Run delay
+					cjne R4, #0, State_21						;Loop until game to return to stop state
+					mov P2, 021H										;Return config LEDs
+					ajmp Main_Loop									;Return to main loop
 
 	State_22:	;P2 Serves the ball
-					mov P2, #10000000b
-					lcall Button_Check
-					lcall Action
-					lcall Feedback_Delay
-					cjne R4, #21, Esc
+					mov P2, #10000000b							;Ball initialised to LD8
+					lcall Button_Check							;Check input
+					lcall Action										;Perform action
+					lcall Feedback_Delay						;Run delay
+					cjne R4, #21, Esc								;Loop until player 2 serves or quits game
 					sjmp State_22
-		Esc:	lcall Main_Loop							
+		Esc:	ajmp Main_Loop									;Return to main loop
 
 ;--------------------------------- Functions---------------------------------------
 	
@@ -467,10 +456,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 								jnb 06H, Mute_Toggle
 								ret
 								Play:						lcall LCD_clr
-																mov DPTR, #P1_serve_string1
-																lcall LCD_string
-																lcall LCD_line2
-																mov DPTR, #P1_serve_string2
+																mov DPTR, #P1_serve_string
 																lcall LCD_string
 																mov 21H, P2								;When PB4 is pressed, save the current byte in P2 into the config byte (21H)
 																INC State									;Increment the state value to enter play state
@@ -491,14 +477,13 @@ $INClude (c8051f120.INC) ; Includes register definition file
 								jnb 00H, P1_Serve
 								jnb 03H, Back
 								ret
-								P1_Serve:	mov State, #3
+								P1_Serve:	lcall LCD_clr
+													mov DPTR, #Play_string
+													lcall LCD_string
+													mov State, #3
 													clr 08H			;Clear bit to to determine serve vs return ball
 													ret
-								Back:			lcall LCD_clr
-													mov DPTR, #Stop_string						
-													lcall LCD_String
-													dec State
-													mov P2, 21H
+								Back:			lcall Stop
 													ret
 													
 		S3_Actions:
@@ -680,6 +665,8 @@ $INClude (c8051f120.INC) ; Includes register definition file
 								ret
 								Unpause: 	mov State, 2
 													mov P2, R3
+													mov A, #80H
+													lcall LCD_cmd
 													mov DPTR, #Play_string
 													lcall LCD_string
 													ret
@@ -696,7 +683,10 @@ $INClude (c8051f120.INC) ; Includes register definition file
 								jnb 07H, P2_Serve
 								jnb 03H, Back2
 								ret
-								P2_Serve:	mov State, #10
+								P2_Serve:	lcall LCD_clr
+													mov DPTR, #Play_string
+													lcall LCD_string
+													mov State, #10
 													clr 09H
 													ret
 								Back2:		lcall Stop
@@ -748,6 +738,8 @@ $INClude (c8051f120.INC) ; Includes register definition file
 		Pause:	
 						mov 2, State
 						mov State, #19
+						mov A, #80H
+						lcall LCD_cmd
 						mov DPTR, #Pause_string
 						lcall LCD_string
 						ret
@@ -1038,6 +1030,39 @@ $INClude (c8051f120.INC) ; Includes register definition file
 		end_string:
 			ret
 
+	LCD_points:
+			lcall LCD_line2
+			mov A, Score
+			swap A
+			anl A, #0FH
+			rl A
+			mov temp, A
+			push 0
+			mov DPTR, #Points
+			movc A, @A+DPTR
+			lcall LCD_dat
+			pop 0
+			mov A, temp
+			INC A
+			movc A, @A+DPTR
+			lcall LCD_dat
+			mov A, #0CEH
+			lcall LCD_cmd
+			mov A, Score
+			anl A, #0FH
+			rl A
+			mov temp, A
+			push 0
+			movc A, @A+DPTR
+			lcall LCD_dat
+			pop 0
+			mov A, temp
+			INC A
+			movc A, @A+DPTR
+			lcall LCD_dat
+			ret
+
+
 	LCD_clr:
 			mov A, #01H
 			lcall LCD_cmd
@@ -1054,22 +1079,19 @@ $INClude (c8051f120.INC) ; Includes register definition file
 Delay_Value: db 10H,0DH,0AH,07H,04H,01H
 Volume_Value: db 20H,40H,60H,80H,0B0H,0FFH
 
-;--------------Strings--------------
-Stop_string: db "Configure:",00H
-Play_string: db "      Play      ",00H
-P1_point_string1: db "Player One wins",00H
-P1_point_string2: db "point!",00H
-P2_point_string1: db "Player Two wins",00H
-P2_point_string2: db "point!",00H
-P1_serve_string1: db "Player One",00H
-P1_serve_string2: db "to serve...",00H
-P2_serve_string1: db "Player Two",00H
-P2_serve_string2: db "to serve...",00H
-Player_string: db "Players: ",00H
-Speed_string: db "Speed:          ",00H
-Pause_string:	db "    ~Pause~     ",00H
+;-----------------------------------Strings----------------------------------------
+Stop_string: db "Config:",00H
+Play_string: db "Play",00H
+P1_point_string: db "P1 wins point!",00H
+P2_point_string: db "P2 wins point!",00H
+P1_serve_string: db "P1 to serve",00H
+P2_serve_string: db "P2 to serve",00H
+Player_string: db "P#: ",00H
+Speed_string: db "Spd:",00H
+Pause_string:	db "Pause",00H
 Game_over_string: db "GAME OVER",00H
 P1_win_string: db "PLAYER ONE WINS!",00H
 P2_win_string: db "PLAYER TWO WINS!",00H
+Points: db ' 0',' 1',' 2',' 3',' 4',' 5',' 6',' 7',' 8',' 9','10','11','12','13','14','15'
 
 END
