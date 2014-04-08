@@ -4,6 +4,14 @@ $INClude (c8051f120.INC) ; Includes register definition file
 ;-----------------------------------------------------------------------------
 	Score				equ				R1							; Set Score in R1
 	State				equ				R4							; Set State in R4
+	LCD_D4			equ				P3.0
+	LCD_D5			equ				P3.1
+	LCD_D6			equ				P3.2
+	LCD_D7			equ				P3.3
+	LCD_RS			equ				P3.4
+	LCD_RW			equ				P3.5
+	LCD_EN			equ				P3.6
+	
 
 	org 0000H
 		ljmp Start 													; Locate a jump to the start of code at
@@ -28,7 +36,7 @@ $INClude (c8051f120.INC) ; Includes register definition file
 	mov 	21H, #0													; Initialise config byte to zero
 	mov 	22H, #0													; Initialise byte used in "score display" subroutine
 	mov		P2, #00000011b									;	Initialise LEDs to default config state
-	mov 	23H, #00000011b
+	mov 	23H, #00000011b									; Initialise byte used for Volume/Mute setting (lowest two bits used as flags for other routines)
 
 ;--------------------------------- Main Loop-------------------------------------------
 	Main_loop:
@@ -275,6 +283,8 @@ $INClude (c8051f120.INC) ; Includes register definition file
     mov  REF0CN,    #003h
     ret
 
+	LCD_Init
+		
 
 ;----------Action Routines----------	
 	Ball_Right:				;Routine to move the light one position to the right
