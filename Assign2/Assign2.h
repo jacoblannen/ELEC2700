@@ -1,14 +1,13 @@
 /*_____________________________________________________________________________________________________________________
 
-        Project:        
-        Module:         
-        Author:         
-        Date:           
+Project:
+Module:
+Author:
+Date:
 
-        Description:
-        
+Description:
 
-        Revisions:
+Revisions:
 
 
 _______________________________________________________________________________________________________________________*/
@@ -17,48 +16,55 @@ ________________________________________________________________________________
 #define Assign2_h
 
 //--------------------------------------------------------------------------------------------------------------------
-//                              Global Variables
+// Definitions
 //--------------------------------------------------------------------------------------------------------------------
-sbit PB1 = P1 ^ 0;                           // Pushbutton PB1
-sbit PB2 = P1 ^ 1;                           // Pushbutton PB2
-sbit PB3 = P1 ^ 2;                           // Pushbutton PB3   
-sbit PB4 = P1 ^ 3;                           // Pushbuttom PB4
-sbit PB5 = P1 ^ 4;                           // Pushbutton PB5
-sbit PB6 = P1 ^ 5;                           // Pushbutton PB6
-sbit PB7 = P1 ^ 6;                           // Pushbutton PB7   
-sbit PB8 = P1 ^ 7;                           // Pushbuttom PB8
+#define C4 262
+#define D4 294
+#define E4 330
+#define F4 349
+#define G4 392
+#define A4 440
+#define B4 494
+#define C4S 277
+#define D4S 311
+#define F4S 370
+#define G4S 415
+#define A4S 466
 
-sbit MPB = P3 ^ 7;													 // Pushbuttom MPB on 8051 development board
 
-sbit LD1 = P2 ^ 0;                         // LED LD1   
-sbit LD2 = P2 ^ 1;                         // LED LD2
-sbit LD3 = P2 ^ 2;                         // LED LD3
-sbit LD4 = P2 ^ 3;                         // LED LD4  
-sbit LD5 = P2 ^ 4;                         // LED LD5   
-sbit LD6 = P2 ^ 5;                         // LED LD6
-sbit LD7 = P2 ^ 6;                         // LED LD7
-sbit LD8 = P2 ^ 7;                         // LED LD8    
+//--------------------------------------------------------------------------------------------------------------------
+// Global Variables
+//--------------------------------------------------------------------------------------------------------------------
+sbit PB1 = P1 ^ 0; // Pushbutton PB1
+sbit PB2 = P1 ^ 1; // Pushbutton PB2
+sbit PB3 = P1 ^ 2; // Pushbutton PB3
+sbit PB4 = P1 ^ 3; // Pushbuttom PB4
+sbit PB5 = P1 ^ 4; // Pushbutton PB5
+sbit PB6 = P1 ^ 5; // Pushbutton PB6
+sbit PB7 = P1 ^ 6; // Pushbutton PB7
+sbit PB8 = P1 ^ 7; // Pushbuttom PB8
 
-unsigned char	phase;
+sbit MPB = P3 ^ 7;	// Pushbuttom MPB on 8051 development board
+
+sbit LD1 = P2 ^ 0; // LED LD1
+sbit LD2 = P2 ^ 1; // LED LD2
+sbit LD3 = P2 ^ 2; // LED LD3
+sbit LD4 = P2 ^ 3; // LED LD4
+sbit LD5 = P2 ^ 4; // LED LD5
+sbit LD6 = P2 ^ 5; // LED LD6
+sbit LD7 = P2 ^ 6; // LED LD7
+sbit LD8 = P2 ^ 7; // LED LD8
+
+unsigned char	phase = 0;
 unsigned int	frequency;
+bit rising = 1;
+bit positive = 1;
+bit	state = 1;
 
 
-static const code unsigned char sine[256];/* =
-{
-	128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170, 173, 176, 179, 182, 185, 188, 190, 193,\
-	196, 198, 201, 203, 206, 208, 211, 213, 215, 218, 220, 222, 224, 226, 228, 230, 232, 234, 235, 237, 238, 240, 241,\
-	243, 244, 245, 246, 248, 249, 250, 250, 251, 252, 253, 253, 254, 254, 254, 255, 255, 255, 255, 255, 255, 255, 254,\
-	254, 254, 253, 253, 252, 251, 250, 250, 249, 248, 246, 245, 244, 243, 241, 240, 238, 237, 235, 234, 232, 230, 228,\
-	226, 224, 222, 220, 218, 215, 213, 211, 208, 206, 203, 201, 198, 196, 193, 190, 188, 185, 182, 179, 176, 173, 170,\
-	167, 165, 162, 158, 155, 152, 149, 146, 143, 140, 137, 134, 131, 128, 124, 121, 118, 115, 112, 109, 106, 103, 100,\
-	97, 93, 90, 88, 85, 82, 79, 76, 73, 70, 67, 65, 62, 59, 57, 54, 52, 49, 47, 44, 42, 40, 37, 35, 33, 31, 29, 27, 25,\
-	23, 21, 20, 18, 17, 15, 14, 12, 11, 10, 9, 7, 6, 5, 5, 4, 3, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3,\
-	4, 5, 5, 6, 7, 9, 10, 11, 12, 14, 15, 17, 18, 20, 21, 23, 25, 27, 29, 31, 33, 35, 37, 40, 42, 44, 47, 49, 52, 54,\
-	57, 59, 62, 65, 67, 70, 73, 76, 79, 82, 85, 88, 90, 93, 97, 100, 103, 106, 109, 112, 115, 118, 121, 124
-};
-*/
+
 //--------------------------------------------------------------------------------------------------------------------
-//                              Function prototypes
+// Function prototypes
 //--------------------------------------------------------------------------------------------------------------------
 void main(void);
 void General_Init(void);
@@ -66,10 +72,6 @@ void Timer_Init(void);
 void Voltage_Reference_Init(void);
 void DAC_Init(void);
 void Interrupts_Init(void);
+unsigned char get_sine(unsigned char);
 
-#endif    
-
-             
-
-
-
+#endif 
