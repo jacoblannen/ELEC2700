@@ -34,39 +34,91 @@ void main(void)
   	Voltage_Reference_Init();
 	DAC_Init();
   	Interrupts_Init();
-	LD1 = 1;
+	phase = 0;
 
-	sine[]={128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170, 173, 176, 179, 182, 185, 188, 190, 193,\
-	196, 198, 201, 203, 206, 208, 211, 213, 215, 218, 220, 222, 224, 226, 228, 230, 232, 234, 235, 237, 238, 240, 241,\
-	243, 244, 245, 246, 248, 249, 250, 250, 251, 252, 253, 253, 254, 254, 254, 255, 255, 255, 255, 255, 255, 255, 254,\
-	254, 254, 253, 253, 252, 251, 250, 250, 249, 248, 246, 245, 244, 243, 241, 240, 238, 237, 235, 234, 232, 230, 228,\
-	226, 224, 222, 220, 218, 215, 213, 211, 208, 206, 203, 201, 198, 196, 193, 190, 188, 185, 182, 179, 176, 173, 170,\
-	167, 165, 162, 158, 155, 152, 149, 146, 143, 140, 137, 134, 131, 128, 124, 121, 118, 115, 112, 109, 106, 103, 100,\
-	97, 93, 90, 88, 85, 82, 79, 76, 73, 70, 67, 65, 62, 59, 57, 54, 52, 49, 47, 44, 42, 40, 37, 35, 33, 31, 29, 27, 25,\
-	23, 21, 20, 18, 17, 15, 14, 12, 11, 10, 9, 7, 6, 5, 5, 4, 3, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3,\
-	4, 5, 5, 6, 7, 9, 10, 11, 12, 14, 15, 17, 18, 20, 21, 23, 25, 27, 29, 31, 33, 35, 37, 40, 42, 44, 47, 49, 52, 54,\
-	57, 59, 62, 65, 67, 70, 73, 76, 79, 82, 85, 88, 90, 93, 97, 100, 103, 106, 109, 112, 115, 118, 121, 124};
-
-
-	while(1)
-	{	
-		// Do stuff here ??
-
-		// Try this code out to test the pushbuttons and LEDs as defined in Assign2.h
-	/*	LD1 = ~PB1;	// Note the ~ means "complement"
-		LD2 = ~PB2;
-		LD3 = ~PB3;
-		LD4 = ~PB4;
-		LD5 = ~PB5;
-		LD6 = ~PB6;
-		LD7 = ~PB7;
-
-		if ((~MPB) || (~PB8))  // What does this do.....Note that MPB is the P3.7 push button on the 8051 board
-			LD8 = 1;
-		else 
-			LD8 = 0;
-	*/
+	while(state == 0)
+	{
 		TR2 = 1;
+	}
+	while(state == 1)
+	{	
+		TR2 = 1;
+		P2=0;
+		while(PB2==0)
+		{
+			LD2=1;
+			if(PB1 == 1)
+			{
+				frequency = C4;
+			}else{
+				LD1=1;
+				frequency = C4S;
+			}
+		}
+		while(PB3==0)
+		{
+			LD3=1;
+			if(PB1 == 1)
+			{
+				frequency = D4;
+			}else{
+				LD1=1;
+				frequency = D4S;
+			}
+		}
+		while(PB4==0)
+		{
+			LD4=1;
+			if(PB1==0)
+			{
+				LD1=1;
+			}
+			frequency = E4;
+		}
+		while(PB5==0)
+		{
+			LD5=1;
+			if(PB1 == 1)
+			{
+				frequency = F4;
+			}else{
+				LD1=1;
+				frequency = F4S;
+			}
+		}
+		while(PB6==0)
+		{
+			LD6=1;
+			if(PB1 == 1)
+			{
+				frequency = G4;
+			}else{
+				LD1=1;
+				frequency = G4S;
+			}
+		}
+		while(PB7==0)
+		{
+			LD7=1;
+			if(PB1 == 1)
+			{
+				frequency = A4;
+			}else{
+				LD1=1;
+				frequency = A4S;
+			}
+		}
+		while(PB8==0)
+		{
+			LD8=1;
+			if(PB1==0)
+			{
+				LD1=1;
+			}
+			frequency = B4;		
+		}
+		frequency=0;
+
 	}
 }
 
@@ -105,7 +157,7 @@ void Timer_Init()
     TMR2CN    = 0x04;
     TMR2CF    = 0x0A;
     RCAP2L    = 0xFF;
-    RCAP2H    = 0xFF;
+    RCAP2H    = 0xF9;
 }
 
 /*--------------------------------------------------------------------------------------------------------------------
@@ -160,11 +212,56 @@ void Interrupts_Init()
 void Timer2_ISR (void) interrupt 5
 {
   	unsigned char SFRPAGE_SAVE = SFRPAGE;        // Save Current SFR page
-  	DAC0= sine[phase];
-	phase+= frequency;
+	unsigned char DAC_value;  
+	unsigned char volume = 3;	
+
+	
+
+	DAC_value= get_sine(phase);
+	DAC0H= DAC_value/volume;
+	phase+= 150;//(frequency/2);
+	if(CY==1)
+	{
+		if((positive == 1 && rising == 1) || (positive == 0 && rising == 0))
+		{
+			rising = ~rising;
+		}else if((positive == 0 && rising == 1) || (positive == 1 && rising == 0))
+		{
+			positive = ~positive;
+		}
+	}
+
 	TF2 = 0;        // Reset Interrupt
   	SFRPAGE = SFRPAGE_SAVE; 							      // Restore SFR page
 }
 
 
+unsigned char get_sine(unsigned char time){
+	unsigned char index;
+	unsigned char out;
+	const unsigned char code sine[] = {0,1,2,2,3,4,5,5,6,7,8,9,9,10,11,12,12,13,14,15,16,16,17,18,19,19,20,21,22,23,23,24,25,26,26,27,28,29,29,30,31,32,32,33,34,35,36,36,37,38,39,39,40,41,41,42,43,44,44,45,46,47,47,48,49,50,50,51,52,52,53,54,55,55,56,57,57,58,59,59,60,61,61,62,63,64,64,65,66,66,67,68,68,69,70,70,71,71,72,73,73,74,75,75,76,77,77,78,78,79,80,80,81,81,82,83,83,84,84,85,86,86,87,87,88,88,89,90,90,91,91,92,92,93,93,94,94,95,96,96,97,97,98,98,99,99,100,100,101,101,101,102,102,103,103,104,104,105,105,106,106,106,107,107,108,108,109,109,109,110,110,111,111,111,112,112,112,113,113,114,114,114,115,115,115,116,116,116,117,117,117,117,118,118,118,119,119,119,120,120,120,120,121,121,121,121,122,122,122,122,122,123,123,123,123,123,124,124,124,124,124,125,125,125,125,125,125,125,126,126,126,126,126,126,126,126,127,127,127,127,127,127,127,127,127,127,127,127,127,127,127,127,127,127,127,127};
+	if(MPB==0)
+	{
+		state=~state;
+	}
 
+	if(rising==1 && positive==1)
+	{
+		index = time;
+		out = 128 + sine[index];
+	}else if(rising==0 && positive==1)
+	{
+		index = 255 - time;
+		out = 128 + sine[index];
+	}else if(rising==0 && positive==0)
+	{
+		index = time;
+		out = 128 - sine[index];
+	}else if(rising==1 && positive==0)
+	{
+		index = 255 - time;
+		out = 128 - sine[index];
+	}
+		
+	return(out);
+}
