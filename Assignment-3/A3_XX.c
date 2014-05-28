@@ -1,9 +1,8 @@
 /*_____________________________________________________________________________________________________________________
 
-        Project:        
-        Module:         
-        Author:         
-        Date:           
+        Project:        ELEC2700 Assignment 3 - Ultrasonic Radar
+        Author:         Jacob Lannen (#3162100)
+        Date:           28/05/2014
 
         Description:
         This program ....
