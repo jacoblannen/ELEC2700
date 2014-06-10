@@ -1,8 +1,9 @@
 /*_____________________________________________________________________________________________________________________
 
-        Project:        ELEC2700 Assignment 3 - Ultrasonic Radar
-        Author:         Jacob Lannen (#3162100)
-        Date:           28/05/2014
+        Project:        
+        Module:         
+        Author:         
+        Date:           
 
         Description:
         This program ....
@@ -14,11 +15,14 @@
 
 _______________________________________________________________________________________________________________________*/
 
-#include <c8051f120.h>     // SFR declarations
+#include <c8051f120.h>		// SFR declarations
+#include <stdio.h>			// Include stdio for sprintf() to display distances
 #include "A3_XX.h"
 
 
-int servopos;							// Servo position (30-120)
+int servopos;				// Servo position (30-120)
+int x;
+char dist_str[16];			// String which displays the distance from the US sensor as calculated
 
 
 /*--------------------------------------------------------------------------------------------------------------------
@@ -37,27 +41,38 @@ void main(void)
 	Timer_Init();
 	LCD_Init();	
 	Interrupts_Init();
-	LCD_string("Radar Test");
+	LCD_string("Ultrasonic Radar");
+	LCD_newline();
+	LCD_string("Distance: ");
 
 	while(1)
 	{	
-		for(servopos = 30; servopos<120; servopos++)
+		get_dist();
+		LCD_string(dist_str);
+		LCD_Com(0xCA);
+/*
+		for(servopos = 60; servopos<240; servopos++)
 		{		
 			Servo_Ctrl = 1;
 			delay_usec(servopos);
 			Servo_Ctrl = 0;
 			delay_milsec(20);
-			delay_milsec(10);
+			get_dist();
+			LCD_Com(0xCA);
+			LCD_string(dist_str);
 		}
 
-		for(servopos = 120; servopos>30; servopos--)
+		for(servopos = 240; servopos>60; servopos--)
 		{		
 			Servo_Ctrl = 1;
 			delay_usec(servopos);
 			Servo_Ctrl = 0;
 			delay_milsec(20);
-			delay_milsec(10);
+			get_dist();
+			LCD_Com(0xCA);
+			LCD_string(dist_str);
 		}
+*/
 	}
 }
 
@@ -79,7 +94,7 @@ void General_Init()
 	P2MDOUT = 0xff;		// Need to make pushpull outputs to drive LEDs properly
 	P3MDOUT = 0xff;
 	XBR2 = 0x40;
-	Servo_Ctrl = 0;	// Initialise servo control pin to 0
+	Servo_Ctrl = 0;		// Initialise servo control pin to 0
 }
 
 /*--------------------------------------------------------------------------------------------------------------------
@@ -93,8 +108,7 @@ void General_Init()
 void Timer_Init()
 {
 	SFRPAGE = TMR2_PAGE;
-	//TMR2CN = 0x04;
-	//TMR2CF = 0x02;
+	TMR2CF = 0x1A;
 }
 
 /*--------------------------------------------------------------------------------------------------------------------
@@ -111,6 +125,34 @@ void Interrupts_Init()
 }
 
 /*--------------------------------------------------------------------------------------------------------------------
+        Function:         get_dist
+
+        Description:      Send a pulse from the US transducer, then, use the delay to calculate the distance of the object
+
+        Revisions:
+
+--------------------------------------------------------------------------------------------------------------------*/
+void get_dist()
+{
+	int timer, dist;	
+	
+	TMR2L = 0;
+	TMR2H = 0;
+
+	for(x = 0; x<8; x++)
+	{
+		USonicTX = ~USonicTX;
+		delay_usec(1);
+	}
+	delay_usec(12);
+	
+	TMR2CN = 0x04;
+	
+	dist = (((timer*41)+150000)*(17/50000))/2;
+	sprintf(dist_str, "%dmm", dist);	
+}
+
+/*--------------------------------------------------------------------------------------------------------------------
         Function:         Timer2_ISR
 
         Description:      Timer 2 interrupt service routine
@@ -122,11 +164,16 @@ void Timer2_ISR (void) interrupt 5
 {
   unsigned char SFRPAGE_SAVE = SFRPAGE;        // Save Current SFR page
 	
-	// Do stuff here...
-
+	if(USonicRX == 1)
+	{
+		TMR2CN = 0x00;
+		timer = TMR2H;
+		timer = timer << 4;
+		timer += TMR2L;
+	}
 	
-	TF2 = 0;        														// Reset interrupt flag
-  	SFRPAGE = SFRPAGE_SAVE; 							      // Restore SFR page
+	TF2 = 0;									// Reset interrupt flag
+  	SFRPAGE = SFRPAGE_SAVE; 					// Restore SFR page
 }
 
 
