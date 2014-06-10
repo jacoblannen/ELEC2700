@@ -58,6 +58,8 @@ void Timer_Init();
 void Interrupts_Init();
 void External_INT0_ISR(void);
 
+void get_dist();
+
 void LCD_Init(void);
 void LCD_Reset(void);
 void LCD_Com(char);
