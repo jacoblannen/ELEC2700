@@ -173,6 +173,6 @@ void Delay_usec(int usec)
 {
 	int k, l;
 	for(k=0; k<usec; k++)
-		for(l=0; l<40; l++);
+		for(l=0; l<20; l++);
 }
 
