@@ -27,7 +27,7 @@ sbit PB6 = P1 ^ 5;                           // Pushbutton PB6
 sbit PB7 = P1 ^ 6;                           // Pushbutton PB7   
 sbit PB8 = P1 ^ 7;                           // Pushbuttom PB8
 
-sbit SMODE = P3 ^ 7;												// Pushbutton on F120 development board
+sbit SMODE = P3 ^ 7;						// Pushbutton on F120 development board
 
 sbit LD1 = P2 ^ 0;                         // LD0   
 sbit LD2 = P2 ^ 1;                         // LD1
@@ -39,14 +39,16 @@ sbit LD7 = P2 ^ 6;                         // LD6
 sbit LD8 = P2 ^ 7;                         // LD7    
 
 
-#define LCD P3
-#define LCD_EN 0x40
-#define LCD_RS 0x10
+#define LCD P3								// LCD port
+#define LCD_EN 0x40							// LCD Enable
+#define LCD_RS 0x10							// LCD Write/data bit
 
+sbit USonicTX	= P0 ^ 2;					// TX for ultrasonic
+sbit USonicRX	= P0 ^ 3;					// RX 
+sbit Servo_Ctrl = P0 ^ 4;					// Servo control pin
 
-sbit USonicTX		= P0 ^ 2;											// TX for ultrasonic
-sbit USonicRX		= P0 ^ 3;											// RX 
-sbit Servo_Ctrl = P0 ^ 4;											// Servo control pin
+sfr16 DPTR = 0x82;							// 16-bit SFR for clock calculations
+
 
 
 //--------------------------------------------------------------------------------------------------------------------
@@ -54,11 +56,13 @@ sbit Servo_Ctrl = P0 ^ 4;											// Servo control pin
 //--------------------------------------------------------------------------------------------------------------------
 void main(void);
 void General_Init(void);
-void Timer_Init();
-void Interrupts_Init();
+void Timer_Init(void);
+void Interrupts_Init(void);
 void External_INT0_ISR(void);
+void Voltage_Reference_Init(void);
+void DAC_Init(void);
 
-void get_dist();
+void get_dist(void);
 
 void LCD_Init(void);
 void LCD_Reset(void);
@@ -69,9 +73,14 @@ void LCD_clr(void);
 void LCD_newline(void);
 void delay_milsec(int);
 void delay_usec(int);
-void Delay(int);
 
-#endif  
+void UART_Init(void);
+void UART_transmit(unsigned char);
+void UART_transmit_str(unsigned char *dat);
+unsigned char UART_recieve(void);
+
+
+#endif
 
              
 
